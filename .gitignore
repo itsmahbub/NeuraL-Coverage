@@ -5,3 +5,4 @@ data/
 datasets/
 pretrained_models/
 adversarial_examples/
+.vector_cache/

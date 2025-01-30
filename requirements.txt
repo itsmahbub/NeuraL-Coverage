@@ -1,8 +1,14 @@
-torch==1.9.0
-torchvision==0.10.0
-torchtext==0.10.0
+# torch==1.11.0
+# torchvision==0.12.0
+# torchtext==0.12.0
+torch==2.2.0
+torchtext==0.17.0
+torchvision==0.17.0
 pyflann-py3
-scipy==1.7.3
-scikit-learn==1.0.2
-opencv-python==4.5.3.56
+scipy==1.15.1
+scikit-learn==1.6.1
+opencv-python==4.11.0.86
+tqdm==4.67.1
+spacy==3.8.4
+portalocker==3.1.1
 # git+https://github.com/cynthia/pyflann3.git

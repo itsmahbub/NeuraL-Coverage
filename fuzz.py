@@ -46,7 +46,7 @@ class Parameters(object):
         self.beta = 0.5 # default 0.2
         self.TRY_NUM = 50
         self.save_every = 100
-        self.output_dir = '/data/yyuanaq/output/Coverage/Fuzzer/'
+        self.output_dir = './data/output/Coverage/Fuzzer/'
 
         translation = list(itertools.product([getattr(image_transforms, "image_translation")],
                                             [(-5, -5), (-5, 0), (0, -5), (0, 0), (5, 0), (0, 5), (5, 5)]))        

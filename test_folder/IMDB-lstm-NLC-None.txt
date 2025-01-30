@@ -1,0 +1,4 @@
+Dataset: IMDB 
+Model: lstm 
+Criterion: NLC 
+Hyper-parameter: None

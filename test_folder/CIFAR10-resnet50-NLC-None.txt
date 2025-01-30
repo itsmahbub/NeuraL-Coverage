@@ -1,0 +1,8 @@
+Dataset: CIFAR10 
+Model: resnet50 
+Criterion: NLC 
+Hyper-parameter: None
+Initial coverage: 1
+Test: 1.907453, increase: 0.004059
+CIFAR10 x1: 1.903394, increase: 0.000000
+CIFAR10 x10: 1.903394, increase: 0.000000

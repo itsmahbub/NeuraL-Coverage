@@ -46,7 +46,7 @@ class Parameters(object):
         self.beta = 0.5 # default 0.2
         self.TRY_NUM = 50
         self.save_every = 100
-        self.output_dir = '/data/yyuanaq/output/Coverage/Fuzzer/'
+        self.output_dir = './data/output/Coverage/Fuzzer/'
 
         translation = list(itertools.product([getattr(image_transforms, "image_translation")],
                                             [(-5, -5), (-5, 0), (0, -5), (0, 0), (5, 0), (0, 5), (5, 5)]))        
@@ -335,7 +335,7 @@ if __name__ == '__main__':
             sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
 
-    os.environ['TORCH_HOME'] = '/data/yyuanaq/collection/ImageNet/'
+    os.environ['TORCH_HOME'] = './data/collection/ImageNet/'
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='CIFAR10',

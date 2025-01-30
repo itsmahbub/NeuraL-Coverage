@@ -1,0 +1,4 @@
+Dataset: CIFAR10 
+Model: resnet50 
+Criterion: NLC 
+Hyper-parameter: 0.75

@@ -1,0 +1,4 @@
+Dataset: ImageNet 
+Model: BigGAN 
+Criterion: NLC 
+Hyper-parameter: None

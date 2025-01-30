@@ -10,10 +10,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 
-import torchvision
 import torchvision.transforms as transforms
-from torchtext.legacy import data
-from torchtext.legacy import datasets
+import torchtext
+from torchtext import data
+from torchtext import datasets
+from torch.nn.utils.rnn import pad_sequence
+from torchtext.datasets import IMDB
+from torchtext.vocab import vocab as build_vocab, GloVe
+from torchtext.vocab import build_vocab_from_iterator
+from collections import Counter
+from torchtext.data.utils import get_tokenizer
+from torchtext.transforms import VocabTransform, Sequential, ToTensor
 
 import constants
 
@@ -98,59 +105,10 @@ class ImageNetDataset(Dataset):
         image = self.transform(image)
         return image, index
 
-class IMDBDataset(Dataset):
-    def __init__(self,
-                 args,
-                 split='train'):
-        super(IMDBDataset).__init__()
-        assert split in ['train', 'test']
-        self.total_class_num = 2
-        self.args = args
-        
-        MAX_VOCAB_SIZE = 25_000
-        TEXT = data.Field(tokenize = 'spacy',
-                        tokenizer_language = 'en_core_web_sm',
-                        include_lengths = False, # set it as true when training
-                        fix_length=constants.PAD_LENGTH,
-                        batch_first=False)
-        LABEL = data.LabelField(dtype = torch.float)
-        train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
-        TEXT.build_vocab(train_data, 
-                        max_size=MAX_VOCAB_SIZE, 
-                        vectors='glove.6B.100d', 
-                        unk_init=torch.Tensor.normal_)
-        LABEL.build_vocab(train_data)
-
-        train_iterator, test_iterator = data.BucketIterator.splits(
-            (train_data, test_data), 
-            batch_size=1,
-            sort_within_batch=True,
-            shuffle=False
-        )
-
-        self.text_list = []
-        self.label_list = []
-        iterator = train_iterator if split == 'train' else test_iterator
-        for batch in train_iterator:
-            # self.text_list.append(batch.text.squeeze(-1))
-            # self.label_list.append(batch.label.squeeze(-1))
-            text, text_lengths = batch.text
-            self.text_list.append(text)
-            self.label_list.append(batch.label)
-
-        print('Total %d Data.' % len(self.text_list))
-
-    def __len__(self):
-        return len(self.text_list)
-
-    def __getitem__(self, index):
-        text = self.text_list[index]
-        label = self.label_list[index]
-        return text, label
-
 class DataLoader(object):
-    def __init__(self, args):
+    def __init__(self, args, **kwargs):
         self.args = args
+        self.kwargs = kwargs
         self.init_param()
 
     def init_param(self):
@@ -163,7 +121,8 @@ class DataLoader(object):
                             dataset,
                             batch_size=self.args.batch_size * self.gpus,
                             num_workers=int(self.args.num_workers),
-                            shuffle=shuffle
+                            shuffle=shuffle,
+                            **self.kwargs
                         )
         return data_loader
 
@@ -187,40 +146,41 @@ def get_loader(args):
         TOTAL_CLASS_NUM = 1000
     elif args.dataset == 'IMDB':
         MAX_VOCAB_SIZE = 25_000
-        TEXT = data.Field(tokenize = 'spacy',
-                        tokenizer_language = 'en_core_web_sm',
-                        include_lengths = False, # set it as true when training
-                        fix_length=constants.PAD_LENGTH,
-                        batch_first=False)
-        LABEL = data.LabelField(dtype = torch.float)
-        train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
-        TEXT.build_vocab(train_data, 
-                        max_size=MAX_VOCAB_SIZE, 
-                        vectors='glove.6B.100d', 
-                        unk_init=torch.Tensor.normal_)
-        LABEL.build_vocab(train_data)
 
-        train_iterator, test_iterator = data.BucketIterator.splits(
-            (train_data, test_data), 
-            batch_size=args.batch_size,
-            sort_within_batch=True,
-            shuffle=False
-        )
-        _, seed_iterator = data.BucketIterator.splits(
-            (train_data, test_data), 
-            batch_size=args.batch_size,
-            sort_within_batch=True,
-            shuffle=True
-        )
-        train_loader = []
-        test_loader = []
-        seed_loader = []
-        for batch in train_iterator:
-            train_loader.append((batch.text, batch.label))
-        for batch in test_iterator:
-            test_loader.append((batch.text, batch.label))
-        for batch in seed_iterator:
-            seed_loader.append((batch.text, batch.label))
+        tokenizer = get_tokenizer("spacy", language="en_core_web_sm")
+
+        def yield_tokens(data_iter):
+            for label, line in data_iter:
+                yield tokenizer(line)
+
+        # Load IMDB dataset
+        train_iter = IMDB(split=('train'))
+
+        # Build vocabulary
+        vocab = build_vocab_from_iterator(yield_tokens(train_iter), max_tokens=MAX_VOCAB_SIZE, specials=["<unk>", "<pad>"])
+        vocab.set_default_index(vocab["<unk>"])
+
+        # Load pretrained GloVe embeddings
+        vectors = GloVe(name='6B', dim=100)
+        vocab.vectors = vectors.get_vecs_by_tokens(vocab.get_itos(), lower_case_backup=True)
+
+        def collate_batch(batch):
+            text_list, label_list = [], []
+            for label, text in batch:
+                tokenized_text = tokenizer(text)
+                indexed_text = vocab(tokenized_text)[:constants.PAD_LENGTH]  # Truncate if needed
+                text_list.append(torch.tensor(indexed_text))
+                label_list.append(torch.tensor(label))
+            
+            text_list = torch.nn.utils.rnn.pad_sequence(text_list, padding_value=vocab["<pad>"])
+            label_list = torch.tensor(label_list)
+            return text_list, label_list
+
+        # Create DataLoaders
+        train_iter, test_iter = IMDB(split=('train', 'test'))  # Reload since iterator was exhausted
+        train_loader = torch.utils.data.DataLoader(list(train_iter), batch_size=args.batch_size, shuffle=True, collate_fn=collate_batch)
+        test_loader = torch.utils.data.DataLoader(list(test_iter), batch_size=args.batch_size, shuffle=False, collate_fn=collate_batch)
+        seed_loader = torch.utils.data.DataLoader(list(test_iter), batch_size=args.batch_size, shuffle=True, collate_fn=collate_batch)
         TOTAL_CLASS_NUM = 2
     return TOTAL_CLASS_NUM, train_loader, test_loader, seed_loader
 
@@ -336,3 +296,5 @@ class ImageNetFuzzDataset(FuzzDataset):
 
 if __name__ == '__main__':
     pass
+
+

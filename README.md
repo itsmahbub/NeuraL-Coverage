@@ -35,6 +35,7 @@ Each criterion is implemented as one Python class in `coverage.py`.
     git clone https://github.com/Yuanyuan-Yuan/NeuraL-Coverage
     cd NeuraL-Coverage
     pip install -r requirements.txt
+    python -m spacy download en_core_web_sm
     ```
 
 ## Model & Dataset

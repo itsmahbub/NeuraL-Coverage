@@ -1,0 +1,8 @@
+Dataset: IMDB 
+Model: lstm 
+Criterion: NC 
+Hyper-parameter: 0.75
+Initial coverage: 0
+Test: 0.312950, increase: 0.015013
+IMDB x1: 0.303918, increase: 0.005981
+IMDB x10: 0.508849, increase: 0.210912
