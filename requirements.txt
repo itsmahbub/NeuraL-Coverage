@@ -12,3 +12,6 @@ tqdm==4.67.1
 spacy==3.8.4
 portalocker==3.1.1
 # git+https://github.com/cynthia/pyflann3.git
+transformers==4.48.2
+torchaudio==2.2.0
+

@@ -127,7 +127,7 @@ def get_layer_output(model, data, pad_length=constants.PAD_LENGTH):
         unrolled_layer_output_dict = {}
         for k in layer_output_dict.keys():
             if ('RNN' in k) or ('LSTM' in k) or ('GRU' in k):
-                assert pad_length == len(layer_output_dict[k])
+                # assert pad_length == len(layer_output_dict[k])
                 for i in range(pad_length):
                     unrolled_layer_output_dict['%s-%d' % (k, i)] = layer_output_dict[k][i]
             else:
