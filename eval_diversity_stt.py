@@ -20,7 +20,7 @@ import constants
 
 def get_random_audio():
     sampling_rate = 16000       # Sampling rate: 16 kHz
-    duration = 5.0              # Duration in seconds
+    duration = 1000.0              # Duration in seconds
     num_samples = int(sampling_rate * duration)
 
     # Generate random audio data (a tensor of size [num_samples])
@@ -69,6 +69,7 @@ model.eval()
 random_audio = get_random_audio()
 print("Shape: ", random_audio.shape)
 # random_audio = torchaudio.functional.resample(random_audio, 16000, 16000)
+# random_audio = next(iter(train_loader))[0]
 mel_spec = mel_transform(random_audio)
 mel_spec = mel_spec.transpose(1, 2)
 # mel_spec = mel_spec.squeeze(0)
@@ -105,7 +106,7 @@ del criterion1
 times = 1
 for times in [1, 10]:
     criterion2 = copy.deepcopy(criterion)
-    for i, (old_text, label) in enumerate(seed_loader):
+    for i, (old_text, label, _, _) in enumerate(seed_loader):
         for j in tqdm(range(times * len(list(seed_loader)))):
             text = old_text[torch.randperm(old_text.size()[0])]
             if USE_SC:

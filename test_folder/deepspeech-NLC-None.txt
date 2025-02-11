@@ -1,0 +1,3 @@
+Model: deepspeech 
+Criterion: NLC 
+Hyper-parameter: None

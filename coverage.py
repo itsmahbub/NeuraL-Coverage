@@ -473,7 +473,13 @@ class NC(Coverage):
             scaled_output = tool.scale(layer_output)
             mask_index = scaled_output > self.threshold
             is_covered = mask_index.sum(0) > 0
-            cove_dict[layer_name] = is_covered | self.coverage_dict[layer_name]
+            # print(is_covered.shape)
+            # print(self.coverage_dict[layer_name])
+            # print(layer_name)
+            try:
+                cove_dict[layer_name] = is_covered | self.coverage_dict[layer_name]
+            except:
+                pass
         return cove_dict
     
     def coverage(self, cove_dict):

@@ -1,3 +1,0 @@
-Model: deepspeech 
-Criterion: NC 
-Hyper-parameter: 0.5
