@@ -183,34 +183,36 @@ def get_loader(args):
         seed_loader = torch.utils.data.DataLoader(list(test_iter), batch_size=args.batch_size, shuffle=True, collate_fn=collate_batch)
         TOTAL_CLASS_NUM = 2
     elif args.dataset == "LibriSpeech":
-        sample_rate = 16000
-        n_mels = 128
-        mel_transform = torchaudio.transforms.MelSpectrogram(
-            sample_rate=sample_rate,
-            n_mels=n_mels
-        )
-        alphabet = " abcdefghijklmnopqrstuvwxyz'"
-        char_map = {c: i + 1 for i, c in enumerate(alphabet)}
+        from models.deepspeech import DeepSpeechModel
+        model = DeepSpeechModel()
+        # sample_rate = 16000
+        # n_mels = 128
+        # mel_transform = torchaudio.transforms.MelSpectrogram(
+        #     sample_rate=sample_rate,
+        #     n_mels=n_mels
+        # )
+        # alphabet = " abcdefghijklmnopqrstuvwxyz'"
+        # char_map = {c: i + 1 for i, c in enumerate(alphabet)}
 
-        def transcript_to_int(transcript):
-            transcript = transcript.lower()
-            return [char_map[c] for c in transcript if c in char_map]
+        # def transcript_to_int(transcript):
+        #     transcript = transcript.lower()
+        #     return [char_map[c] for c in transcript if c in char_map]
 
         def collate_fn(batch):
             features = []
             targets = []
             input_lengths = []
             target_lengths = []
-            
+
             for waveform, sr, transcript, *_ in batch:
                 # Convert multi-channel to mono if needed.
                 if waveform.shape[0] > 1:
                     waveform = waveform.mean(dim=0, keepdim=True)
                 # Resample (if the sample rate is not the desired one)
-                if sr != sample_rate:
+                if sr != model.sample_rate:
                     waveform = torchaudio.functional.resample(waveform, sr, sample_rate)
                 # Compute MelSpectrogram; output shape: (1, n_mels, time)
-                mel_spec = mel_transform(waveform)
+                mel_spec = model.mel_transform(waveform)
                 # Rearrange to (1, time, n_mels)
                 mel_spec = mel_spec.transpose(1, 2)
                 # Remove channel dimension (since all audio is mono now) → (time, n_mels)
@@ -219,7 +221,7 @@ def get_loader(args):
                 input_lengths.append(mel_spec.shape[0])
                 
                 # Convert transcript into a tensor of ints.
-                t = torch.tensor(transcript_to_int(transcript), dtype=torch.long)
+                t = torch.tensor(model.encode(transcript), dtype=torch.long)
                 targets.append(t)
                 target_lengths.append(len(t))
             
@@ -233,14 +235,13 @@ def get_loader(args):
             
             return features, targets, torch.tensor(input_lengths, dtype=torch.long), torch.tensor(target_lengths, dtype=torch.long)
 
-        batch_size = 4
         
         train_dataset = torchaudio.datasets.LIBRISPEECH("./datasets/", url="train-clean-100", download=True)
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
         test_dataset = torchaudio.datasets.LIBRISPEECH("./datasets/", url="test-clean", download=True)
-        test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
-        seed_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
-        TOTAL_CLASS_NUM = len(alphabet) + 1 
+        test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn)
+        seed_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn)
+        TOTAL_CLASS_NUM = len(model.labels) + 1
     return TOTAL_CLASS_NUM, train_loader, test_loader, seed_loader
 
 class FuzzDataset:

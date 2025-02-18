@@ -20,7 +20,7 @@ import constants
 
 def get_random_audio():
     sampling_rate = 16000       # Sampling rate: 16 kHz
-    duration = 1000.0              # Duration in seconds
+    duration = 10             # Duration in seconds
     num_samples = int(sampling_rate * duration)
 
     # Generate random audio data (a tensor of size [num_samples])

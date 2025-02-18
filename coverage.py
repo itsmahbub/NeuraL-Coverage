@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from pyflann import FLANN
 from scipy.stats import gaussian_kde
 from sklearn.neighbors import KernelDensity
+import math
 
 import tool
 
@@ -472,14 +473,20 @@ class NC(Coverage):
         for (layer_name, layer_output) in layer_output_dict.items():
             scaled_output = tool.scale(layer_output)
             mask_index = scaled_output > self.threshold
-            is_covered = mask_index.sum(0) > 0
+            new_coverage = mask_index.sum(0) > 0
             # print(is_covered.shape)
             # print(self.coverage_dict[layer_name])
             # print(layer_name)
+            old_coverage = self.coverage_dict[layer_name]
+            
             try:
-                cove_dict[layer_name] = is_covered | self.coverage_dict[layer_name]
-            except:
-                pass
+                cove_dict[layer_name] = new_coverage | old_coverage
+            except Exception as e:
+                print(str(e))
+                new_coverage = torch.nn.functional.pad(new_coverage, [0,0,0,old_coverage.shape[0]-new_coverage.shape[0]], mode='constant', value=False)
+                cove_dict[layer_name] = new_coverage | old_coverage
+                print(new_coverage.shape)
+                print(old_coverage.shape)
         return cove_dict
     
     def coverage(self, cove_dict):
@@ -487,7 +494,7 @@ class NC(Coverage):
         for layer_name in cove_dict.keys():
             is_covered = cove_dict[layer_name]
             cove += is_covered.sum()
-            total += len(is_covered)
+            total += math.prod(is_covered.size())
         return (cove / total).item()
 
     def save(self, path):
