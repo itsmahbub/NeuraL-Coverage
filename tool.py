@@ -74,9 +74,11 @@ def get_layer_output_sizes(model, data, pad_length=constants.PAD_LENGTH):
         else:
             name_counter[class_name] += 1
         if ('RNN' in class_name) or ('LSTM' in class_name) or ('GRU' in class_name):
-            output_sizes['%s-%d' % (class_name, name_counter[class_name])] = [output[0].size(2)]
+            output_sizes['%s-%d' % (class_name, name_counter[class_name])] = [output[0].size(-1)]
+        elif 'Linear' in class_name:
+            output_sizes['%s-%d' % (class_name, name_counter[class_name])] = [output.size(-1)]
         else:
-            output_sizes['%s-%d' % (class_name, name_counter[class_name])] = list(output.size()[1:])
+            raise Exception(f'Unknown layer: {class_name}')
 
     for name, module in layer_dict.items():
         hooks.append(module.register_forward_hook(hook))
@@ -129,19 +131,21 @@ def get_layer_output(model, data, pad_length=constants.PAD_LENGTH):
             if ('RNN' in k) or ('LSTM' in k) or ('GRU' in k):
                 # assert pad_length == len(layer_output_dict[k])
                 for i in range(pad_length):
-                    unrolled_layer_output_dict['%s-%d' % (k, i)] = layer_output_dict[k][i]
+                    unrolled_layer_output_dict['%s-%d' % (k, i)] = layer_output_dict[k][i] # Take average
             else:
                 unrolled_layer_output_dict[k] = layer_output_dict[k]
 
         for layer, output in unrolled_layer_output_dict.items():
             if len(output.size()) == 4: # (N, K, H, w)
-                output = output.mean((2, 3))
+                output = output.mean((1, 2))
+            elif len(output.size()) == 3: # T, N, w
+                output = output.mean(dim=0)
             unrolled_layer_output_dict[layer] = output.detach()
         return unrolled_layer_output_dict
 
 class Estimator(object):
-    def __init__(self, feature_num, num_class=1):
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    def __init__(self, feature_num, num_class=1, device=None):
+        self.device = device or torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.num_class = num_class
         self.CoVariance = torch.zeros(num_class, feature_num, feature_num).to(self.device)
         self.Ave = torch.zeros(num_class, feature_num).to(self.device)
@@ -237,8 +241,8 @@ class Estimator(object):
         return transformed.squeeze(-1)
 
 class EstimatorFlatten(object):
-    def __init__(self, feature_num, num_class=1):
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    def __init__(self, feature_num, num_class=1, device=None):
+        self.device = device or torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.num_class = num_class
         self.CoVariance = torch.zeros(num_class, feature_num).to(self.device)
         self.Ave = torch.zeros(num_class, feature_num).to(self.device)

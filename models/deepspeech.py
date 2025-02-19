@@ -5,12 +5,12 @@ from torchaudio.models import DeepSpeech
 import torch.nn.functional as F
 
 class DeepSpeechModel:
-    def __init__(self, model_path=None):
+    def __init__(self, model_path=None, device=None):
         """
         Wrapper for DeepSpeech model to add utility functions like loading pretrained models,
         decoding, transforming audio to spectrograms, and inverting spectrograms back to audio.
         """
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = device or torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.labels = " abcdefghijklmnopqrstuvwxyz'"
         self.n_mels = 128
         self.n_fft = 400

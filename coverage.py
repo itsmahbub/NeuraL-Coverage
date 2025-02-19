@@ -14,8 +14,8 @@ import tool
 
 
 class Coverage:
-    def __init__(self, model, layer_size_dict, hyper=None, **kwargs):
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    def __init__(self, model, layer_size_dict, hyper=None, device=None, **kwargs):
+        self.device = device or torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.model = model
         self.model.to(self.device)
         self.layer_size_dict = layer_size_dict
@@ -216,7 +216,7 @@ class NLC(Coverage):
         self.estimator_dict = {}
         self.current = 1
         for (layer_name, layer_size) in self.layer_size_dict.items():
-            self.estimator_dict[layer_name] = tool.Estimator(feature_num=layer_size[0])
+            self.estimator_dict[layer_name] = tool.Estimator(feature_num=layer_size[0], device=self.device)
     
     def calculate(self, data):
         stat_dict = {}
@@ -483,6 +483,7 @@ class NC(Coverage):
                 cove_dict[layer_name] = new_coverage | old_coverage
             except Exception as e:
                 print(str(e))
+                # Batch Size Mismatch (last batch)
                 new_coverage = torch.nn.functional.pad(new_coverage, [0,0,0,old_coverage.shape[0]-new_coverage.shape[0]], mode='constant', value=False)
                 cove_dict[layer_name] = new_coverage | old_coverage
                 print(new_coverage.shape)
@@ -699,8 +700,10 @@ class TKNC(Coverage):
         cove_dict = {}
         layer_output_dict = tool.get_layer_output(self.model, data)
         for (layer_name, layer_output) in layer_output_dict.items():
+            # if layer_name == "Linear-4":
+            #     print(layer_output.shape)
             batch_size = layer_output.size(0)
-            num_neuron = layer_output.size(1)
+            num_neuron = layer_output.size(-1)
             # layer_output: (batch_size, num_neuron)
             _, idx = layer_output.topk(min(self.k, num_neuron), dim=1, largest=True, sorted=False)
             # idx: (batch_size, k)
@@ -789,6 +792,7 @@ class CC(Coverage):
         self.threshold = hyper
         self.distant_dict = {}
         self.flann_dict = {}
+        self.current = 0
 
         for (layer_name, layer_size) in self.layer_size_dict.items():
             self.flann_dict[layer_name] = FLANN()

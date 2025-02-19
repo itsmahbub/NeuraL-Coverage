@@ -153,3 +153,9 @@ For random mutation (i.e., without any criterion as objective), run
 ```bash
 python fuzz_rand.py --dataset CIFAR10 --model resnet50
 ```
+
+
+## Ideas
+
+- Per layer coverage
+- Test Set only coverage

@@ -1,4 +1,4 @@
-PAD_LENGTH = 32
+PAD_LENGTH = 2
 # for text model to unroll layers
 
 PRETRAINED_MODELS = './pretrained_models'
