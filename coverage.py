@@ -91,7 +91,7 @@ class SurpriseCoverage(Coverage):
 
     def build(self, data_loader):
         print('Building Mean & Var...')
-        for i, (data, label) in enumerate(tqdm(data_loader)):
+        for i, (data, label, *_) in enumerate(tqdm(data_loader)):
             # print(data.size())
             if isinstance(data, tuple):
                 data = (data[0].to(self.device), data[1].to(self.device))
@@ -100,7 +100,7 @@ class SurpriseCoverage(Coverage):
             self.set_meam_var(data, label)
         self.set_mask()
         print('Building SA...')
-        for i, (data, label) in enumerate(tqdm(data_loader)):
+        for i, (data, label, *_) in enumerate(tqdm(data_loader)):
             if isinstance(data, tuple):
                 data = (data[0].to(self.device), data[1].to(self.device))
             else:
@@ -114,7 +114,7 @@ class SurpriseCoverage(Coverage):
             self.compute_covinv()
 
     def assess(self, data_loader):
-        for i, (data, label) in enumerate(tqdm(data_loader)):
+        for i, (data, label, *_) in enumerate(tqdm(data_loader)):
             if isinstance(data, tuple):
                 data = (data[0].to(self.device), data[1].to(self.device))
             else:
@@ -325,6 +325,7 @@ class LSC(SurpriseCoverage):
             SA = SA_batch[i]
             # if (np.isnan(SA).any()) or (not np.isinf(SA).any()):
             #     continue
+            # TODO: Label can not be converted to scalar for STT
             if self.num_class <= 1:
                 lsa = np.asscalar(-self.kde_cache[int(label.cpu())].logpdf(np.expand_dims(SA, 1)))
             else:
@@ -357,7 +358,7 @@ class DSC(SurpriseCoverage):
             dist_a_list = torch.linalg.norm(
                 torch.from_numpy(SA).to(self.device) - torch.from_numpy(self.SA_cache[int(label.cpu())]).to(self.device), dim=1)
             idx_a = torch.argmin(dist_a_list, 0).item()
-
+            # TODO: label can not be converted to int
             (SA_a, dist_a) = (self.SA_cache[int(label.cpu())][idx_a], dist_a_list[idx_a])
             dist_a = dist_a.cpu().numpy()
 
@@ -387,7 +388,7 @@ class MDSC(SurpriseCoverage):
             self.mask_index_dict[layer_name] = (self.var_dict[layer_name] >= self.min_var).nonzero()
             feature_num += self.mask_index_dict[layer_name].size(0)
         print('feature_num: ', feature_num)
-        self.estimator = tool.Estimator(feature_num=feature_num, num_class=self.num_class)
+        self.estimator = tool.Estimator(feature_num=feature_num, num_class=self.num_class, device=self.device)
 
     def build_SA(self, data_batch, label_batch):
         SA_batch = []
@@ -739,7 +740,7 @@ class TKNP(Coverage):
         network_pattern = set()
         self.current = 0
         for (layer_name, layer_size) in self.layer_size_dict.items():
-            self.layer_pattern[layer_name] = set()
+            layer_pattern[layer_name] = set()
         self.coverage_dict = {
             'layer_pattern': layer_pattern,
             'network_pattern': network_pattern
@@ -755,10 +756,10 @@ class TKNP(Coverage):
             # idx: (batch_size, k)
             pat = set([str(s) for s in list(idx[:, ])])
             topk_idx_list.append(idx)
-            layer_pat[layer_name] = set.union(pat, self.layer_pattern[layer_name])
+            layer_pat[layer_name] = set.union(pat, self.coverage_dict['layer_pattern'][layer_name])
         network_topk_idx = torch.cat(topk_idx_list, 1)
         network_pat = set([str(s) for s in list(network_topk_idx[:, ])])
-        network_pat = set.union(network_pat, self.network_pattern)
+        network_pat = set.union(network_pat, self.coverage_dict['network_pattern'])
         return {
             'layer_pattern': layer_pat,
             'network_pattern': network_pat

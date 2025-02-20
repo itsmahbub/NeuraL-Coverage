@@ -230,8 +230,9 @@ def get_loader(args):
             # Add a channel dimension so final shape becomes (batch, 1, max_time, n_mels)
             features = features.unsqueeze(1)
             
+            targets = pad_sequence(targets, batch_first=True)
             # Concatenate target sequences into a flat 1D tensor (required by CTCLoss).
-            targets = torch.cat(targets)
+            # targets = torch.cat(targets)
             
             return features, targets, torch.tensor(input_lengths, dtype=torch.long), torch.tensor(target_lengths, dtype=torch.long)
 

@@ -9,7 +9,7 @@ from coverage import *
 from torchviz import make_dot
 
 DEVICE = torch.device('cpu')
-DEVICE = None
+# DEVICE = None
 path = os.path.join(constants.PRETRAINED_MODELS, 'LibriSpeech/deepspeech.pth')
 model = DeepSpeechModel(model_path=path, device=DEVICE)
 
@@ -85,12 +85,52 @@ print('Total %d neurons: ' % num_neuron)
 # print(f"Test coverage: {test_coverage}")
 
 
-print("-------------CC-----------")
-nlc = CC(model.model, layer_size_dict, hyper=10, device=model.device)
-nlc.assess(train_loader)
-train_coverage = nlc.current
-print(f"Train coverage: {train_coverage}")
+# print("-------------CC-----------")
+# nlc = CC(model.model, layer_size_dict, hyper=10, device=model.device)
+# # nlc.assess(train_loader)
+# # train_coverage = nlc.current
+# # print(f"Train coverage: {train_coverage}")
 
-nlc.assess(test_loader)
-test_coverage = nlc.current
+# nlc.assess(test_loader)
+# test_coverage = nlc.current
+# print(f"Test coverage: {test_coverage}")
+
+
+
+# print("-------------NBC-----------")
+# nbc = NBC(model.model, layer_size_dict, device=model.device)
+# nbc.assess(test_loader)
+# test_coverage = nbc.current
+# print(f"Test coverage: {test_coverage}")
+
+# print("-------------SNAC-----------")
+# snac = SNAC(model.model, layer_size_dict, device=model.device)
+# snac.assess(test_loader)
+# test_coverage = snac.current
+# print(f"Test coverage: {test_coverage}")
+
+# print("-------------TKNP-----------")
+# tknp = TKNP(model.model, layer_size_dict, hyper=10, device=model.device)
+# tknp.assess(test_loader)
+# test_coverage = tknp.current
+# print(f"Test coverage: {test_coverage}")
+
+# print("-------------LSC-----------")
+# lsc = LSC(model.model, layer_size_dict, hyper=10,  min_var=1e-5, num_class=TOTAL_CLASS_NUM, device=model.device)
+# lsc.assess(test_loader)
+# test_coverage = lsc.current
+# print(f"Test coverage: {test_coverage}")
+
+# print("-------------DSC-----------")
+# dsc = DSC(model.model, layer_size_dict, hyper=0.1,  min_var=1e-5, num_class=TOTAL_CLASS_NUM, device=model.device)
+# dsc.assess(test_loader)
+# test_coverage = dsc.current
+# print(f"Test coverage: {test_coverage}")
+
+print("-------------MDSC-----------")
+mdsc = MDSC(model.model, layer_size_dict, hyper=10,  min_var=1e-5, num_class=TOTAL_CLASS_NUM, device=model.device)
+mdsc.build(test_loader)
+mdsc.assess(test_loader)
+test_coverage = mdsc.current
 print(f"Test coverage: {test_coverage}")
+
