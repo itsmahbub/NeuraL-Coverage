@@ -18,6 +18,7 @@ import coverage
 import utility
 from style_operator import Stylized
 import image_transforms
+from torchvision.models import resnet50, ResNet50_Weights
 
 class Parameters(object):
     def __init__(self, base_args):
@@ -29,9 +30,9 @@ class Parameters(object):
         self.num_workers = 4
         
         self.batch_size = 50
-        self.mutate_batch_size = 1
+        self.mutate_batch_size = 32
         self.nc = 3
-        self.image_size = 128 if self.dataset == 'ImageNet' else 32
+        self.image_size = 224 if self.dataset == 'ImageNet' else 32
         self.input_shape = (1, self.image_size, self.image_size, 3)
         self.num_class = 100 if self.dataset == 'ImageNet' else 10
         self.num_per_class = 1000 // self.num_class
@@ -45,8 +46,8 @@ class Parameters(object):
         self.alpha = 0.2 # default 0.02
         self.beta = 0.5 # default 0.2
         self.TRY_NUM = 50
-        self.save_every = 100
-        self.output_dir = '/data/yyuanaq/output/Coverage/Fuzzer/'
+        self.save_every = 1
+        self.output_dir = './data/output/Coverage/Fuzzer/'
 
         translation = list(itertools.product([getattr(image_transforms, "image_translation")],
                                             [(-5, -5), (-5, 0), (0, -5), (0, 0), (5, 0), (0, 5), (5, 5)]))        
@@ -111,23 +112,25 @@ class Fuzzer:
 
     def can_terminate(self):
         condition = sum([
-            self.epoch > 10000,
-            self.delta_time > 60 * 60 * 6,
+            self.epoch > 10000000000,
+            self.delta_time > 30 * 60,
         ]) 
         return condition > 0
 
     def print_info(self):
         self.logger.update(self)
 
-    def is_adversarial(self, image, label, k=1):
+    def is_adversarial(self, old_image, image, label, k=1):
         with torch.no_grad():
+            old_score = self.criterion.model(old_image)
+            _, old_ind = old_score.topk(k, dim=1, largest=True, sorted=True)
             scores = self.criterion.model(image)
             _, ind = scores.topk(k, dim=1, largest=True, sorted=True)
             correct = ind.eq(label.view(-1, 1).expand_as(ind))
             wrong = ~correct
             index = (wrong == True).nonzero(as_tuple=True)[0]
             wrong_total = wrong.view(-1).float().sum()
-            return wrong_total, index
+            return wrong_total, index, old_ind.squeeze(1), ind.squeeze(1)
 
     def to_batch(self, data_list):
         batch_list = []
@@ -159,7 +162,7 @@ class Fuzzer:
         self.epoch = 0
         start_time = time.time()
         while not self.can_terminate():
-            if self.epoch % 500 == 0:
+            if self.epoch % 100 == 0:
                 self.print_info()
             # S = self.Sample(B)
             S = B
@@ -202,6 +205,9 @@ class Fuzzer:
                 new_image = new_image.to(self.params.device)
                 new_label = torch.from_numpy(B_label_new)
                 new_label = new_label.to(self.params.device)
+
+                old_image = self.image_to_input(B_old)
+                old_image = old_image.to(self.params.device)
                 
                 B_c, Bs, Bs_label = T
                 B_c += [0]
@@ -210,16 +216,23 @@ class Fuzzer:
                 self.delta_batch += 1
                 self.BatchPrioritize(T, B_id)
 
-                num_wrong, ae_index = self.is_adversarial(new_image, new_label)
+                num_wrong, ae_index, original_predictions, mutated_labels = self.is_adversarial(old_image, new_image, new_label)
                 if num_wrong > 0:
                     self.num_ae += num_wrong
 
-                if self.epoch % self.params.save_every == 0:
-                    self.saveImage(B_new / self.params.input_scale, self.params.image_dir + ('%03d_new.jpg' % self.epoch))
-                    self.saveImage(B_old / self.params.input_scale, self.params.image_dir + ('%03d_old.jpg' % self.epoch))
-                    if num_wrong > 0:
-                        print('Saving AE images...')
-                        save_image(new_image[ae_index].data, self.params.image_dir + ('%03d_ae.jpg' % self.epoch), normalize=True)
+                # if self.epoch % self.params.save_every == 0:
+                    # self.saveImage(B_new / self.params.input_scale, self.params.image_dir + ('%03d_new.jpg' % self.epoch))
+                    # self.saveImage(B_old / self.params.input_scale, self.params.image_dir + ('%03d_old.jpg' % self.epoch))
+                if num_wrong > 0:
+                    # print('Saving AE images...')
+                    ae_indices = ae_index.tolist()
+                    for i, idx in enumerate(ae_indices):
+                        original_prediction = original_predictions[idx].item()
+                        ground_truth = new_label[idx].item()
+                        mutated_label = mutated_labels[idx].item()
+                        id = f"{self.epoch}{i}"
+                        os.makedirs(f"{self.params.image_dir}/{ground_truth}_{original_prediction}/", exist_ok=True)
+                        save_image(new_image[idx].data, f"{self.params.image_dir}/{ground_truth}_{original_prediction}/{id}_ae_{mutated_label}.jpg", normalize=True)
 
             gc.collect()
 
@@ -386,17 +399,21 @@ if __name__ == '__main__':
     utility.make_path(args.log_dir)
 
     if args.dataset == 'ImageNet':
-        model = torchvision.models.__dict__[args.model](pretrained=False)
-        path = os.path.join(constants.PRETRAINED_MODELS, ('%s/%s.pth' % (args.dataset, args.model)))
-        assert args.image_size == 128
+        model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+        # model = torchvision.models.__dict__[args.model](pretrained=False)
+        # path = os.path.join(constants.PRETRAINED_MODELS, ('%s/%s.pth' % (args.dataset, args.model)))
+        # model.load_state_dict(torch.load(path))
+
+        assert args.image_size == 224
         assert args.num_class <= 1000
     elif args.dataset == 'CIFAR10':
         model = getattr(models, args.model)(pretrained=False)
         path = os.path.join(constants.PRETRAINED_MODELS, ('%s/%s.pt' % (args.dataset, args.model)))
+        model.load_state_dict(torch.load(path))
         assert args.image_size == 32
         assert args.num_class <= 10
 
-    model.load_state_dict(torch.load(path))
+    
     model.to(args.device)
     model.eval()
 
@@ -439,9 +456,9 @@ if __name__ == '__main__':
     else:
         criterion = getattr(coverage, args.criterion)(model, layer_size_dict, hyper=hyper_map[args.criterion])
 
-    criterion.build(train_loader)
+    criterion.build(seed_loader)
     if args.criterion not in ['CC', 'TKNP', 'LSC', 'DSC', 'MDSC']:
-        criterion.assess(train_loader)
+        criterion.assess(seed_loader)
     '''
     For LSC/DSC/MDSC/CC/TKNP, initialization with training data is too slow (sometimes may
     exceed the memory limit). You can skip this step to speed up the experiment, which

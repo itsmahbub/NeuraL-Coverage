@@ -48,7 +48,7 @@ USE_SC = args.criterion in ['LSC', 'DSC', 'MDSC']
 if args.dataset == 'ImageNet':
     model = torchvision.models.__dict__[args.model](pretrained=False)
     path = os.path.join(constants.PRETRAINED_MODELS, ('%s/%s.pth' % (args.dataset, args.model)))
-    assert args.image_size == 128
+    assert args.image_size == 224
     assert args.num_class <= 1000
 elif args.dataset == 'CIFAR10':
     model = getattr(models, args.model)(pretrained=False)

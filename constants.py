@@ -6,8 +6,8 @@ PRETRAINED_MODELS = './pretrained_models'
 AE_DIR = './adversarial_examples/'
 
 CIFAR10_JPEG_DIR = './datasets/CIFAR10/'
-IMAGENET_JPEG_DIR = '/data/yyuanaq/data/IMAGE-NET/ILSVRC/Data/CLS-LOC/'
-IMAGENET_LABEL_TO_INDEX = './datasets/ImageNet/ImageNetLabel2Index.json'
+IMAGENET_JPEG_DIR = './datasets/imagenet-mini/'
+IMAGENET_LABEL_TO_INDEX = './datasets/ImageNetLabel2Index.json'
 # Since we use the pretrained weights provided by pytorch,
 # we should use the same `label_to_index` mapping.
 

@@ -12,8 +12,8 @@ from torch.utils.data import Dataset
 
 import torchvision
 import torchvision.transforms as transforms
-from torchtext.legacy import data
-from torchtext.legacy import datasets
+# from torchtext.legacy import data
+# from torchtext.legacy import datasets
 
 import constants
 
@@ -98,55 +98,55 @@ class ImageNetDataset(Dataset):
         image = self.transform(image)
         return image, index
 
-class IMDBDataset(Dataset):
-    def __init__(self,
-                 args,
-                 split='train'):
-        super(IMDBDataset).__init__()
-        assert split in ['train', 'test']
-        self.total_class_num = 2
-        self.args = args
+# class IMDBDataset(Dataset):
+#     def __init__(self,
+#                  args,
+#                  split='train'):
+#         super(IMDBDataset).__init__()
+#         assert split in ['train', 'test']
+#         self.total_class_num = 2
+#         self.args = args
         
-        MAX_VOCAB_SIZE = 25_000
-        TEXT = data.Field(tokenize = 'spacy',
-                        tokenizer_language = 'en_core_web_sm',
-                        include_lengths = False, # set it as true when training
-                        fix_length=constants.PAD_LENGTH,
-                        batch_first=False)
-        LABEL = data.LabelField(dtype = torch.float)
-        train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
-        TEXT.build_vocab(train_data, 
-                        max_size=MAX_VOCAB_SIZE, 
-                        vectors='glove.6B.100d', 
-                        unk_init=torch.Tensor.normal_)
-        LABEL.build_vocab(train_data)
+#         MAX_VOCAB_SIZE = 25_000
+#         TEXT = data.Field(tokenize = 'spacy',
+#                         tokenizer_language = 'en_core_web_sm',
+#                         include_lengths = False, # set it as true when training
+#                         fix_length=constants.PAD_LENGTH,
+#                         batch_first=False)
+#         LABEL = data.LabelField(dtype = torch.float)
+#         train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
+#         TEXT.build_vocab(train_data, 
+#                         max_size=MAX_VOCAB_SIZE, 
+#                         vectors='glove.6B.100d', 
+#                         unk_init=torch.Tensor.normal_)
+#         LABEL.build_vocab(train_data)
 
-        train_iterator, test_iterator = data.BucketIterator.splits(
-            (train_data, test_data), 
-            batch_size=1,
-            sort_within_batch=True,
-            shuffle=False
-        )
+#         train_iterator, test_iterator = data.BucketIterator.splits(
+#             (train_data, test_data), 
+#             batch_size=1,
+#             sort_within_batch=True,
+#             shuffle=False
+#         )
 
-        self.text_list = []
-        self.label_list = []
-        iterator = train_iterator if split == 'train' else test_iterator
-        for batch in train_iterator:
-            # self.text_list.append(batch.text.squeeze(-1))
-            # self.label_list.append(batch.label.squeeze(-1))
-            text, text_lengths = batch.text
-            self.text_list.append(text)
-            self.label_list.append(batch.label)
+#         self.text_list = []
+#         self.label_list = []
+#         iterator = train_iterator if split == 'train' else test_iterator
+#         for batch in train_iterator:
+#             # self.text_list.append(batch.text.squeeze(-1))
+#             # self.label_list.append(batch.label.squeeze(-1))
+#             text, text_lengths = batch.text
+#             self.text_list.append(text)
+#             self.label_list.append(batch.label)
 
-        print('Total %d Data.' % len(self.text_list))
+#         print('Total %d Data.' % len(self.text_list))
 
-    def __len__(self):
-        return len(self.text_list)
+#     def __len__(self):
+#         return len(self.text_list)
 
-    def __getitem__(self, index):
-        text = self.text_list[index]
-        label = self.label_list[index]
-        return text, label
+#     def __getitem__(self, index):
+#         text = self.text_list[index]
+#         label = self.label_list[index]
+#         return text, label
 
 class DataLoader(object):
     def __init__(self, args):
@@ -178,8 +178,8 @@ def get_loader(args):
         seed_loader = loader.get_loader(test_data, True)
         TOTAL_CLASS_NUM = 10
     elif args.dataset == 'ImageNet':
-        train_data = CIFAR10Dataset(args, split='train')
-        test_data = CIFAR10Dataset(args, split='val')
+        train_data = ImageNetDataset(args, split='train')
+        test_data = ImageNetDataset(args, split='val')
         loader = DataLoader(args)
         train_loader = loader.get_loader(train_data, False)
         test_loader = loader.get_loader(test_data, False)

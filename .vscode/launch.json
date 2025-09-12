@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/fuzz.py",
+            // "program": "${workspaceFolder}/eval_diversity_image.py",
+            "args": ["--dataset", "ImageNet", "--model", "resnet50", "--criterion", "NLC"],
+            // "args": ["--hyper", "0.5"],
+            "justMyCode": false,
+            "subProcess": true,
+            "console": "integratedTerminal",
+        }
+    ]
+}
