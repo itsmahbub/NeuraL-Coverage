@@ -62,7 +62,7 @@ class Logger(object):
         self.f.write('Dataset: %s\n' % args.dataset)
         self.f.write('Model: %s\n' % args.model)
         self.f.write('Class: %d\n' % args.num_class)
-        self.f.write('Data in each class: %d\n' % args.num_per_class)
+        self.f.write(f'Data in each class: {args.num_per_class}\n')
         self.f.write('Criterion: %s\n' % args.criterion)
 
         for k in engine.hyper_params.keys():

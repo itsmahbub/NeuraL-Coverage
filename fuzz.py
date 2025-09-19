@@ -29,13 +29,15 @@ class Parameters(object):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.num_workers = 4
         
-        self.batch_size = 50
+        self.batch_size = 32
         self.mutate_batch_size = 32
         self.nc = 3
         self.image_size = 224 if self.dataset == 'ImageNet' else 32
         self.input_shape = (1, self.image_size, self.image_size, 3)
-        self.num_class = 100 if self.dataset == 'ImageNet' else 10
-        self.num_per_class = 1000 // self.num_class
+        self.num_class = 1000 if self.dataset == 'ImageNet' else 10 
+        # self.num_per_class = 3 if self.dataset == 'ImageNet' else 10
+        self.num_per_class = None # All images in the set
+
 
         self.input_scale = 255
         self.noise_data = False
@@ -113,7 +115,7 @@ class Fuzzer:
     def can_terminate(self):
         condition = sum([
             self.epoch > 10000000000,
-            self.delta_time > 30 * 60,
+            self.delta_time > 5 * 60,
         ]) 
         return condition > 0
 
@@ -230,9 +232,20 @@ class Fuzzer:
                         original_prediction = original_predictions[idx].item()
                         ground_truth = new_label[idx].item()
                         mutated_label = mutated_labels[idx].item()
-                        id = f"{self.epoch}{i}"
-                        os.makedirs(f"{self.params.image_dir}/{ground_truth}_{original_prediction}/", exist_ok=True)
-                        save_image(new_image[idx].data, f"{self.params.image_dir}/{ground_truth}_{original_prediction}/{id}_ae_{mutated_label}.jpg", normalize=True)
+                        id = f"{self.epoch}_{i}"
+                        os.makedirs(f"{self.params.image_dir}/aes/{ground_truth}/", exist_ok=True)
+                        os.makedirs(f"{self.params.image_dir}/orig/{ground_truth}/", exist_ok=True)
+                        save_image(new_image[idx].data, f"{self.params.image_dir}/aes/{ground_truth}/{id}_ae_{original_prediction}_{mutated_label}.png", normalize=True,  format='PNG')
+                        
+                        old_image = B_old[idx]
+                        while True:
+                            parent_image, _ = self.info[old_image]
+                            if np.all(old_image == parent_image):
+                                break
+                            old_image = parent_image
+                        old_image = np.expand_dims(old_image, axis=0)
+                        old_image = self.image_to_input(old_image)
+                        save_image(old_image[0].data, f"{self.params.image_dir}/orig/{ground_truth}/{id}_orig_{original_prediction}.png", normalize=True, format='PNG')
 
             gc.collect()
 
