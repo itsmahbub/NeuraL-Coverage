@@ -246,11 +246,18 @@ class FuzzDataset:
         image = self.transform(image)
         return (image, index)
 
-    def build(self):
+    def build(self, only_correct=False, model=None):
         image_list = []
         label_list = []
         for i in tqdm(range(self.get_len())):
             (image, label) = self.get_item(i)
+            if only_correct:
+                with torch.no_grad():
+                    output = model(image.unsqueeze(0).cuda())
+                    pred = torch.argmax(output, dim=1)
+                    pred = pred.cpu()[0]
+                    if pred != label:
+                        continue
             image_list.append(image)
             label_list.append(label)
         return image_list, label_list

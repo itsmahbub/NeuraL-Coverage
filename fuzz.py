@@ -20,6 +20,10 @@ from style_operator import Stylized
 import image_transforms
 from torchvision.models import resnet50, ResNet50_Weights
 
+from torch.utils.data import Dataset
+import torch
+
+
 class Parameters(object):
     def __init__(self, base_args):
         self.model = base_args.model
@@ -113,11 +117,11 @@ class Fuzzer:
         self.logger.exit()
 
     def can_terminate(self):
-        condition = sum([
-            self.epoch > 10000000000,
-            self.delta_time > 5 * 60,
-        ]) 
-        return condition > 0
+        # condition = sum([
+        #     self.epoch > 10000000000,
+        #     self.delta_time > 15 * 60,
+        # ]) 
+        return self.delta_time > 15 * 60
 
     def print_info(self):
         self.logger.update(self)
@@ -439,12 +443,12 @@ if __name__ == '__main__':
         data_set = data_loader.CIFAR10FuzzDataset(args, split='test')
     elif args.dataset == 'ImageNet':
         data_set = data_loader.ImageNetFuzzDataset(args, split='val')
-
     TOTAL_CLASS_NUM, train_loader, test_loader, seed_loader = data_loader.get_loader(args)
 
-    image_list, label_list = data_set.build()
+    image_list, label_list = data_set.build(only_correct=True, model=model)
     image_numpy_list = data_set.to_numpy(image_list)
     label_numpy_list = data_set.to_numpy(label_list, False)
+    print("Filtered Dataset Length: ", len(image_numpy_list))
 
     del image_list
     del label_list
