@@ -6,7 +6,7 @@ import time
 from tqdm import tqdm
 import itertools
 import gc
-
+from robustbench.utils import load_model
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -23,6 +23,18 @@ from torchvision.models import resnet50, ResNet50_Weights
 from torch.utils.data import Dataset
 import torch
 
+class NormalizedModel(nn.Module):
+    def __init__(self, model, mean, std):
+        super().__init__()
+        self.model = model
+        mean = torch.tensor(mean).view(1, 3, 1, 1)
+        std = torch.tensor(std).view(1, 3, 1, 1)
+        self.register_buffer("mean", mean)
+        self.register_buffer("std", std)
+
+    def forward(self, x):
+        x = (x - self.mean) / self.std
+        return self.model(x)
 
 class Parameters(object):
     def __init__(self, base_args):
@@ -121,7 +133,7 @@ class Fuzzer:
         #     self.epoch > 10000000000,
         #     self.delta_time > 15 * 60,
         # ]) 
-        return self.delta_time > 15 * 60
+        return self.delta_time > 5 * 60
 
     def print_info(self):
         self.logger.update(self)
@@ -392,7 +404,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='CIFAR10',
                             choices=['CIFAR10', 'ImageNet'])
     parser.add_argument('--model', type=str, default='resnet50',
-                            choices=['resnet50', 'vgg16_bn', 'mobilenet_v2'])
+                            choices=['resnet50', 'vgg16_bn', 'mobilenet_v2', "robustresnet", "mobilevit"])
     parser.add_argument('--criterion', type=str, default='NLC', 
                             choices=['NLC', 'NC', 'KMNC', 'SNAC', 'NBC', 'TKNC', 'TKNP', 'CC',
                     'LSC', 'DSC', 'MDSC'])
@@ -416,7 +428,22 @@ if __name__ == '__main__':
     utility.make_path(args.log_dir)
 
     if args.dataset == 'ImageNet':
-        model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+        if args.model == "resnet50":
+            imagenet_mean = (0.485, 0.456, 0.406)
+            imagenet_std  = (0.229, 0.224, 0.225)
+
+            base_model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+            model = NormalizedModel(base_model, imagenet_mean, imagenet_std)
+        elif args.model == "robustresnet":
+            model_name = "Salman2020Do_R50"
+
+            model = load_model(
+                model_name=model_name,
+                dataset="imagenet",
+                threat_model="Linf"
+            )
+
+        
         # model = torchvision.models.__dict__[args.model](pretrained=False)
         # path = os.path.join(constants.PRETRAINED_MODELS, ('%s/%s.pth' % (args.dataset, args.model)))
         # model.load_state_dict(torch.load(path))
