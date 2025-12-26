@@ -23,6 +23,16 @@ from torchvision.models import resnet50, ResNet50_Weights
 from torch.utils.data import Dataset
 import torch
 
+import hashlib
+
+def hash_numpy(arr: np.ndarray) -> str:
+    h = hashlib.sha256()
+    h.update(arr.tobytes())
+    h.update(str(arr.shape).encode())
+    h.update(str(arr.dtype).encode())
+    return h.hexdigest()
+
+
 def set_seed(seed: int):
     random.seed(seed)
     np.random.seed(seed)
@@ -116,6 +126,7 @@ class Fuzzer:
         self.delta_time = 0
         self.delta_batch = 0
         self.num_ae = 0
+        self.orig_map = {}
 
     def exit(self):
         self.print_info()
@@ -183,6 +194,10 @@ class Fuzzer:
             B_label_new = []
             for s_i in range(len(S)):
                 I = S[s_i]
+                i_hash = hash_numpy(I)
+                if i_hash not in self.orig_map:
+                    self.orig_map[i_hash] = I
+
                 L = S_label[s_i]
                 for i in range(1, Ps(s_i) + 1):
                     I_new, op = self.Mutate(I)
@@ -206,6 +221,12 @@ class Fuzzer:
                             B_new = np.concatenate((B_new, [I_new]))
                             B_old = np.concatenate((B_old, [I]))
                             B_label_new += [L]
+                            i_hash = hash_numpy(I)
+                            i_new_hash = hash_numpy(I_new)
+                            if i_hash in self.orig_map:
+                                self.orig_map[i_new_hash] = self.orig_map[i_hash]
+                            else:
+                                self.orig_map[i_new_hash] = I
                             break
 
 
@@ -216,9 +237,7 @@ class Fuzzer:
                 new_label = torch.from_numpy(B_label_new)
                 new_label = new_label.to(self.params.device)
 
-                old_image = self.image_to_input(B_old)
-                old_image = old_image.to(self.params.device)
-                
+           
                 B_c, Bs, Bs_label = T
                 B_c += [0]
                 Bs += [B_new]
@@ -246,12 +265,9 @@ class Fuzzer:
                    
                         save_image(new_image[idx].data, f"{self.params.image_dir}/aes/{ground_truth}/{id}_ae_{mutated_label}_{mutated_label}.jpg")
                         
-                        old_image = new_image[idx]
-                        while True:
-                            parent_image, _ = self.info[old_image]
-                            if np.all(old_image == parent_image):
-                                break
-                            old_image = parent_image
+                        
+                        old_hash =hash_numpy(B_old[idx])
+                        old_image = self.orig_map[old_hash]
                         old_image = np.expand_dims(old_image, axis=0)
                         old_image = self.image_to_input(old_image)
                         old_image = utility.image_normalize_inv(old_image, self.params.dataset)
