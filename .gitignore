@@ -5,3 +5,4 @@ datasets/painting/
 data/
 __pycache__/
 pretrained_models/
+datasets/CIFAR10/

@@ -275,7 +275,6 @@ class FuzzDataset:
         return image_numpy_list
 
     def to_batch(self, data_list, is_image=True):
-        print("I am Mahbub")
         batch_list = []
         batch = []
         for i, data in enumerate(data_list):

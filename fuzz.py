@@ -23,18 +23,12 @@ from torchvision.models import resnet50, ResNet50_Weights
 from torch.utils.data import Dataset
 import torch
 
-class NormalizedModel(nn.Module):
-    def __init__(self, model, mean, std):
-        super().__init__()
-        self.model = model
-        mean = torch.tensor(mean).view(1, 3, 1, 1)
-        std = torch.tensor(std).view(1, 3, 1, 1)
-        self.register_buffer("mean", mean)
-        self.register_buffer("std", std)
-
-    def forward(self, x):
-        x = (x - self.mean) / self.std
-        return self.model(x)
+def set_seed(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 class Parameters(object):
     def __init__(self, base_args):
@@ -138,17 +132,15 @@ class Fuzzer:
     def print_info(self):
         self.logger.update(self)
 
-    def is_adversarial(self, old_image, image, label, k=1):
+    def is_adversarial(self, image, label, k=1):
         with torch.no_grad():
-            old_score = self.criterion.model(old_image)
-            _, old_ind = old_score.topk(k, dim=1, largest=True, sorted=True)
             scores = self.criterion.model(image)
             _, ind = scores.topk(k, dim=1, largest=True, sorted=True)
             correct = ind.eq(label.view(-1, 1).expand_as(ind))
             wrong = ~correct
             index = (wrong == True).nonzero(as_tuple=True)[0]
             wrong_total = wrong.view(-1).float().sum()
-            return wrong_total, index, old_ind.squeeze(1), ind.squeeze(1)
+            return wrong_total, index, ind.squeeze(1)
 
     def to_batch(self, data_list):
         batch_list = []
@@ -234,7 +226,7 @@ class Fuzzer:
                 self.delta_batch += 1
                 self.BatchPrioritize(T, B_id)
 
-                num_wrong, ae_index, original_predictions, mutated_labels = self.is_adversarial(old_image, new_image, new_label)
+                num_wrong, ae_index, mutated_labels = self.is_adversarial(new_image, new_label)
                 if num_wrong > 0:
                     self.num_ae += num_wrong
 
@@ -244,16 +236,17 @@ class Fuzzer:
                 if num_wrong > 0:
                     # print('Saving AE images...')
                     ae_indices = ae_index.tolist()
+                    new_image = utility.image_normalize_inv(new_image, self.params.dataset)
                     for i, idx in enumerate(ae_indices):
-                        original_prediction = original_predictions[idx].item()
                         ground_truth = new_label[idx].item()
                         mutated_label = mutated_labels[idx].item()
                         id = f"{self.epoch}_{i}"
                         os.makedirs(f"{self.params.image_dir}/aes/{ground_truth}/", exist_ok=True)
                         os.makedirs(f"{self.params.image_dir}/orig/{ground_truth}/", exist_ok=True)
-                        save_image(new_image[idx].data, f"{self.params.image_dir}/aes/{ground_truth}/{id}_ae_{original_prediction}_{mutated_label}.png", normalize=True,  format='PNG')
+                   
+                        save_image(new_image[idx].data, f"{self.params.image_dir}/aes/{ground_truth}/{id}_ae_{mutated_label}_{mutated_label}.jpg")
                         
-                        old_image = B_old[idx]
+                        old_image = new_image[idx]
                         while True:
                             parent_image, _ = self.info[old_image]
                             if np.all(old_image == parent_image):
@@ -261,7 +254,8 @@ class Fuzzer:
                             old_image = parent_image
                         old_image = np.expand_dims(old_image, axis=0)
                         old_image = self.image_to_input(old_image)
-                        save_image(old_image[0].data, f"{self.params.image_dir}/orig/{ground_truth}/{id}_orig_{original_prediction}.png", normalize=True, format='PNG')
+                        old_image = utility.image_normalize_inv(old_image, self.params.dataset)
+                        save_image(old_image[0].data, f"{self.params.image_dir}/orig/{ground_truth}/{id}_orig_{ground_truth}.png", normalize=True, format='PNG')
 
             gc.collect()
 
@@ -404,16 +398,17 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='CIFAR10',
                             choices=['CIFAR10', 'ImageNet'])
     parser.add_argument('--model', type=str, default='resnet50',
-                            choices=['resnet50', 'vgg16_bn', 'mobilenet_v2', "robustresnet", "mobilevit"])
+                            choices=['resnet50', 'vgg16_bn', 'mobilenet_v2'])
     parser.add_argument('--criterion', type=str, default='NLC', 
                             choices=['NLC', 'NC', 'KMNC', 'SNAC', 'NBC', 'TKNC', 'TKNP', 'CC',
                     'LSC', 'DSC', 'MDSC'])
     parser.add_argument('--output_dir', type=str, default='./test_folder')
+    parser.add_argument('--random_seed', type=int, default=0)
     # parser.add_argument('--hyper', type=str, default=None)
     base_args = parser.parse_args()
 
     args = Parameters(base_args)
-
+    set_seed(base_args.random_seed)
     args.exp_name = ('%s-%s-%s' % (args.dataset, args.model, args.criterion))
     print(args.exp_name)
     utility.make_path(args.output_dir)
@@ -431,22 +426,11 @@ if __name__ == '__main__':
         if args.model == "resnet50":
             imagenet_mean = (0.485, 0.456, 0.406)
             imagenet_std  = (0.229, 0.224, 0.225)
-
-            base_model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
-            model = NormalizedModel(base_model, imagenet_mean, imagenet_std)
-        elif args.model == "robustresnet":
-            model_name = "Salman2020Do_R50"
-
-            model = load_model(
-                model_name=model_name,
-                dataset="imagenet",
-                threat_model="Linf"
-            )
-
-        
-        # model = torchvision.models.__dict__[args.model](pretrained=False)
-        # path = os.path.join(constants.PRETRAINED_MODELS, ('%s/%s.pth' % (args.dataset, args.model)))
-        # model.load_state_dict(torch.load(path))
+            model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+        else:
+            model = torchvision.models.__dict__[args.model](pretrained=False)
+            path = os.path.join(constants.PRETRAINED_MODELS, ('%s/%s.pth' % (args.dataset, args.model)))
+            model.load_state_dict(torch.load(path))
 
         assert args.image_size == 224
         assert args.num_class <= 1000
@@ -483,7 +467,7 @@ if __name__ == '__main__':
 
     hyper_map = {
         'NLC': None,
-        'NC': 0.75,
+        'NC': 0,
         'KMNC': 100,
         'SNAC': None,
         'NBC': None,
