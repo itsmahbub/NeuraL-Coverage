@@ -152,3 +152,16 @@ For random mutation (i.e., without any criterion as objective), run
 ```bash
 python fuzz_rand.py --dataset CIFAR10 --model resnet50
 ```
+
+
+## TransFuzz Comparison
+
+
+```bash
+scp -r pretrained_models/Style lab-230:~/code/NeuraL-Coverage/pretrained_models/
+scp  datasets/painting.zip lab-230:~/code/NeuraL-Coverage/datasets/painting.zip
+mkdir -p data/output/Coverage/Fuzzer/
+mkdir -p datasets/imagenet-mini/train
+cp -r ../TransFuzz/seeds/imagenet-mini/val datasets/imagenet-mini/
+python fuzz.py --dataset ImageNet --model resnet50 --criterion NLC
+```

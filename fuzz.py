@@ -6,7 +6,6 @@ import time
 from tqdm import tqdm
 import itertools
 import gc
-from robustbench.utils import load_model
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

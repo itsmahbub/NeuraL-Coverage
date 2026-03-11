@@ -4,7 +4,7 @@ torch==2.2.0
 torchtext==0.17.0
 torchvision==0.17.0
 pyflann-py3
-scipy==1.7.3
+scipy>=1.11
 scikit-learn==1.0.2
 opencv-python==4.11.0.86
 numpy==1.26.4
