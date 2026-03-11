@@ -9,7 +9,7 @@ import gc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import json
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
 
@@ -181,6 +181,10 @@ class Fuzzer:
         B, B_label, B_id = self.SelectNext(T)
         self.epoch = 0
         start_time = time.time()
+        overall_counts = [0]
+        delta_times = [0]
+        coverage_gains = [self.criterion.current.item() if isinstance(self.criterion.current, torch.Tensor) else self.criterion.current]
+        
         while not self.can_terminate():
             if self.epoch % 100 == 0:
                 self.print_info()
@@ -277,7 +281,16 @@ class Fuzzer:
             B, B_label, B_id = self.SelectNext(T)
             self.epoch += 1
             self.delta_time = time.time() - start_time
+            delta_times.append(self.delta_time)
+            overall_counts.append(self.num_ae.item())
+            coverage_gains.append(self.criterion.current.item() if isinstance(self.criterion.current, torch.Tensor) else self.criterion.current)
 
+        with open(f"{self.params.image_dir}/statistics.json", "w") as f:
+            json.dump({
+                "time": delta_times,
+                "coverage": coverage_gains,
+                "overall_ae_counts": overall_counts
+            }, f, indent=4)
 
     def Preprocess(self, image_list, label_list):        
         randomize_idx = np.arange(len(image_list))

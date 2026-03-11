@@ -163,5 +163,5 @@ scp  datasets/painting.zip lab-230:~/code/NeuraL-Coverage/datasets/painting.zip
 mkdir -p data/output/Coverage/Fuzzer/
 mkdir -p datasets/imagenet-mini/train
 cp -r ../TransFuzz/seeds/imagenet-mini/val datasets/imagenet-mini/
-python fuzz.py --dataset ImageNet --model resnet50 --criterion NLC
+python fuzz.py --dataset ImageNet --model resnet50 --criterion NLC --random_seed 0
 ```
