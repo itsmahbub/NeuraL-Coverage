@@ -364,8 +364,10 @@ class Fuzzer:
 
             I_mutated = t(I, p).reshape(*(self.params.input_shape[1:]))
             I_mutated = np.clip(I_mutated, 0, 255)
+            I_mutated = np.round(I_mutated).astype(np.uint8)
 
-            if (t, p) in S or self.f(I0, I_mutated):
+            # if (t, p) in S or self.f(I0, I_mutated):
+            if self.f(I0, I_mutated):
                 if (t, p) in G:
                     state = 1
                     I0_G = t(I0, p)
