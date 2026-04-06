@@ -253,7 +253,8 @@ class FuzzDataset:
             (image, label) = self.get_item(i)
             if only_correct:
                 with torch.no_grad():
-                    output = model(image.unsqueeze(0).cuda())
+                    image_input = self.norm(image).unsqueeze(0).cuda()
+                    output = model(image_input)
                     pred = torch.argmax(output, dim=1)
                     pred = pred.cpu()[0]
                     if pred != label:
