@@ -10,7 +10,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import json
-import lpips
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
 from PIL import Image
@@ -47,8 +46,7 @@ class Parameters(object):
         self.dataset = base_args.dataset
         self.criterion = base_args.criterion
         self.use_rounding = base_args.use_rounding
-        self.use_lpips = base_args.use_lpips
-        self.lpips_max = base_args.lpips_max
+        self.enforce_plausibility = base_args.enforce_plausibility
         self.use_sc = self.criterion in ['LSC', 'DSC', 'MDSC']
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.num_workers = 4
@@ -123,7 +121,6 @@ class Fuzzer:
             'p_min': 0.01,
             'gamma': 5,
             'K': 64,
-            'lpips_max': self.params.lpips_max,
         }
         self.logger = utility.Logger(params, self)
         self.criterion = criterion
@@ -132,10 +129,6 @@ class Fuzzer:
         self.delta_batch = 0
         self.num_ae = 0
         self.initial_images = None
-        self.lpips_loss = None
-        if self.params.use_lpips:
-            self.lpips_loss = lpips.LPIPS(net='alex').to(self.params.device)
-            self.lpips_loss.eval()
 
     def exit(self):
         self.print_info()
@@ -370,10 +363,10 @@ class Fuzzer:
             if self.params.use_rounding:
                 I_mutated = np.round(I_mutated).astype(np.uint8)
 
-            if self.params.use_lpips:
-                keep_mutation = self.f(I0, I_orig, I_mutated)
+            if self.params.enforce_plausibility:
+                keep_mutation = self.f(I0, I_mutated)
             else:
-                keep_mutation = (t, p) in S or self.f(I0, I_orig, I_mutated)
+                keep_mutation = (t, p) in S or self.f(I0, I_mutated)
 
             if keep_mutation:
                 if (t, p) in G:
@@ -388,6 +381,11 @@ class Fuzzer:
                 return I_mutated, (t, p)
         return I, (t, p)
 
+            I_mutated = t(I, p).reshape(*(self.params.input_shape[1:]))
+            I_mutated = np.clip(I_mutated, 0, 255)
+            if self.params.use_rounding:
+                I_mutated = np.round(I_mutated).astype(np.uint8)
+
     def saveImage(self, image, path):
         if image is not None:
             print('Saving mutated images in %s...' % path)
@@ -398,17 +396,7 @@ class Fuzzer:
         c = np.random.randint(0, len(A))
         return A[c]
 
-
-    def f(self, I_ref, I_orig, I_new):
-        if self.params.use_lpips:
-            i_tensor = torch.from_numpy(I_orig.astype(np.float32) / self.params.input_scale).permute(2, 0, 1).unsqueeze(0)
-            i_new_tensor = torch.from_numpy(I_new.astype(np.float32) / self.params.input_scale).permute(2, 0, 1).unsqueeze(0)
-            i_tensor = (i_tensor * 2 - 1).to(self.params.device)
-            i_new_tensor = (i_new_tensor * 2 - 1).to(self.params.device)
-            with torch.no_grad():
-                score = self.lpips_loss(i_tensor, i_new_tensor).item()
-            return score <= self.hyper_params['lpips_max']
-
+    def f(self, I_ref, I_new):
         if (np.sum((I_ref - I_new) != 0) < self.hyper_params['alpha'] * np.sum(I_ref > 0)):
             return np.max(np.abs(I_ref - I_new)) <= 255
         else:
@@ -454,8 +442,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, default='./test_folder')
     parser.add_argument('--random_seed', type=int, default=0)
     parser.add_argument('--use_rounding', action='store_true')
-    parser.add_argument('--use_lpips', action='store_true')
-    parser.add_argument('--lpips_max', type=float, default=0.3)
+    parser.add_argument('--enforce_plausibility', action='store_true')
     # parser.add_argument('--hyper', type=str, default=None)
     base_args = parser.parse_args()
 
@@ -464,8 +451,8 @@ if __name__ == '__main__':
     exp_tags = []
     if args.use_rounding:
         exp_tags.append('rounding')
-    if args.use_lpips:
-        exp_tags.append(f'lpips-{args.lpips_max}')
+    if args.enforce_plausibility:
+        exp_tags.append('enforce-plausibility')
     exp_suffix = ('-' + '-'.join(exp_tags)) if exp_tags else ''
     args.exp_name = ('%s-%s-%s%s' % (args.dataset, args.model, args.criterion, exp_suffix))
     print(args.exp_name)
