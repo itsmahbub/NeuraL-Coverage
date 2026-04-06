@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from PIL import Image
 from tqdm import tqdm
-from transformers import CLIPModel, CLIPProcessor
+import open_clip
 
 
 NAME_RE = re.compile(r"^(?P<id>.+?)_(?P<kind>orig|ae)_(?P<label>\d+)(?:_\d+)?\.png$")
@@ -38,23 +38,26 @@ def load_pil_rgb(path: Path, resize_to=None):
 
 
 class ClipSimilarityCalculator:
-    def __init__(self, model_name: str = "openai/clip-vit-base-patch32", device: str = None):
+    def __init__(self, model_name: str = "ViT-B-32", pretrained: str = "openai", device: str = None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.processor = CLIPProcessor.from_pretrained(model_name)
-        self.model = CLIPModel.from_pretrained(model_name).to(self.device)
+        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
+            model_name=model_name,
+            pretrained=pretrained,
+            device=self.device,
+        )
         self.model.eval()
 
     def compute_similarity(self, img1_pil, img2_pil):
-        inputs = self.processor(images=[img1_pil, img2_pil], return_tensors="pt")
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        img1 = self.preprocess(img1_pil).unsqueeze(0).to(self.device)
+        img2 = self.preprocess(img2_pil).unsqueeze(0).to(self.device)
         with torch.no_grad():
-            image_features = self.model.get_image_features(pixel_values=inputs["pixel_values"])
+            image_features = self.model.encode_image(torch.cat([img1, img2], dim=0))
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
         return float(torch.sum(image_features[0] * image_features[1]).item())
 
 
-def calculate_clip_drift(orig_root, aes_root, threshold=None, resize_to=None, model_name="openai/clip-vit-base-patch32", device=None):
-    calc = ClipSimilarityCalculator(model_name=model_name, device=device)
+def calculate_clip_drift(orig_root, aes_root, threshold=None, resize_to=None, model_name="ViT-B-32", pretrained="openai", device=None):
+    calc = ClipSimilarityCalculator(model_name=model_name, pretrained=pretrained, device=device)
 
     similarities = []
     rows = []
@@ -158,7 +161,8 @@ def main():
     parser.add_argument("--case-key", default=None, help="Optional key used in the shared JSON; defaults to the full image root directory path")
     parser.add_argument("--threshold", type=float, default=None, help="Optional CLIP similarity threshold below which samples are counted as drifted")
     parser.add_argument("--resize-to", type=int, default=None, help="Optional square resize before scoring")
-    parser.add_argument("--model-name", default="openai/clip-vit-base-patch32", help="CLIP model name")
+    parser.add_argument("--model-name", default="ViT-B-32", help="open_clip model name")
+    parser.add_argument("--pretrained", default="openai", help="open_clip pretrained weights tag")
     parser.add_argument("--device", default=None, help="cuda or cpu; default auto-detect")
     parser.add_argument("--details-json", default=None, help="Optional JSON path for per-sample details")
     parser.add_argument("--drifted-json", default=None, help="Optional JSON path for below-threshold cases")
@@ -185,6 +189,7 @@ def main():
         threshold=args.threshold,
         resize_to=args.resize_to,
         model_name=args.model_name,
+        pretrained=args.pretrained,
         device=args.device,
     )
 
