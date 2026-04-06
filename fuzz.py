@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import json
+import lpips
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
 from PIL import Image
@@ -45,6 +46,9 @@ class Parameters(object):
         self.model = base_args.model
         self.dataset = base_args.dataset
         self.criterion = base_args.criterion
+        self.use_rounding = base_args.use_rounding
+        self.use_lpips = base_args.use_lpips
+        self.lpips_max = base_args.lpips_max
         self.use_sc = self.criterion in ['LSC', 'DSC', 'MDSC']
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.num_workers = 4
@@ -118,7 +122,8 @@ class Fuzzer:
             'TRY_NUM': 50,
             'p_min': 0.01,
             'gamma': 5,
-            'K': 64
+            'K': 64,
+            'lpips_max': self.params.lpips_max,
         }
         self.logger = utility.Logger(params, self)
         self.criterion = criterion
@@ -127,6 +132,10 @@ class Fuzzer:
         self.delta_batch = 0
         self.num_ae = 0
         self.initial_images = None
+        self.lpips_loss = None
+        if self.params.use_lpips:
+            self.lpips_loss = lpips.LPIPS(net='alex').to(self.params.device)
+            self.lpips_loss.eval()
 
     def exit(self):
         self.print_info()
@@ -202,8 +211,9 @@ class Fuzzer:
                 I = S[s_i]
                 L = S_label[s_i]
                 root_idx = S_root_idx[s_i]
+                I_orig = self.initial_images[root_idx]
                 for i in range(1, Ps(s_i) + 1):
-                    I_new, op = self.Mutate(I)
+                    I_new, op = self.Mutate(I, I_orig)
                     if self.isFailedTest(I_new):
                         F += np.concatenate((F, [I_new]))
                     elif self.isChanged(I, I_new):
@@ -345,7 +355,7 @@ class Fuzzer:
         B_c, Bs, Bs_label, Bs_root_idx = T
         B_c[B_id] += 1
 
-    def Mutate(self, I):
+    def Mutate(self, I, I_orig):
         G, P, S = self.params.G, self.params.P, self.params.S
         I0, state = self.info[I]
 
@@ -357,15 +367,21 @@ class Fuzzer:
 
             I_mutated = t(I, p).reshape(*(self.params.input_shape[1:]))
             I_mutated = np.clip(I_mutated, 0, 255)
-            I_mutated = np.round(I_mutated).astype(np.uint8)
+            if self.params.use_rounding:
+                I_mutated = np.round(I_mutated).astype(np.uint8)
 
-            if (t, p) in S or self.f(I0, I_mutated):
-            # if self.f(I0, I_mutated):
+            if self.params.use_lpips:
+                keep_mutation = self.f(I0, I_orig, I_mutated)
+            else:
+                keep_mutation = (t, p) in S or self.f(I0, I_orig, I_mutated)
+
+            if keep_mutation:
                 if (t, p) in G:
                     state = 1
                     I0_G = t(I0, p)
                     I0_G = np.clip(I0_G, 0, 255)
-                    I0_G = np.round(I0_G).astype(np.uint8)
+                    if self.params.use_rounding:
+                        I0_G = np.round(I0_G).astype(np.uint8)
                     self.info[I_mutated] = (I0_G, state)
                 else:
                     self.info[I_mutated] = (I0, state)
@@ -383,11 +399,20 @@ class Fuzzer:
         return A[c]
 
 
-    def f(self, I, I_new):
-        if (np.sum((I - I_new) != 0) < self.hyper_params['alpha'] * np.sum(I > 0)):
-            return np.max(np.abs(I - I_new)) <= 255
+    def f(self, I_ref, I_orig, I_new):
+        if self.params.use_lpips:
+            i_tensor = torch.from_numpy(I_orig.astype(np.float32) / self.params.input_scale).permute(2, 0, 1).unsqueeze(0)
+            i_new_tensor = torch.from_numpy(I_new.astype(np.float32) / self.params.input_scale).permute(2, 0, 1).unsqueeze(0)
+            i_tensor = (i_tensor * 2 - 1).to(self.params.device)
+            i_new_tensor = (i_new_tensor * 2 - 1).to(self.params.device)
+            with torch.no_grad():
+                score = self.lpips_loss(i_tensor, i_new_tensor).item()
+            return score <= self.hyper_params['lpips_max']
+
+        if (np.sum((I_ref - I_new) != 0) < self.hyper_params['alpha'] * np.sum(I_ref > 0)):
+            return np.max(np.abs(I_ref - I_new)) <= 255
         else:
-            return np.max(np.abs(I - I_new)) <= self.hyper_params['beta'] * 255
+            return np.max(np.abs(I_ref - I_new)) <= self.hyper_params['beta'] * 255
 
 
 if __name__ == '__main__':
@@ -428,12 +453,21 @@ if __name__ == '__main__':
                     'LSC', 'DSC', 'MDSC'])
     parser.add_argument('--output_dir', type=str, default='./test_folder')
     parser.add_argument('--random_seed', type=int, default=0)
+    parser.add_argument('--use_rounding', action='store_true')
+    parser.add_argument('--use_lpips', action='store_true')
+    parser.add_argument('--lpips_max', type=float, default=0.3)
     # parser.add_argument('--hyper', type=str, default=None)
     base_args = parser.parse_args()
 
     args = Parameters(base_args)
     set_seed(base_args.random_seed)
-    args.exp_name = ('%s-%s-%s' % (args.dataset, args.model, args.criterion))
+    exp_tags = []
+    if args.use_rounding:
+        exp_tags.append('rounding')
+    if args.use_lpips:
+        exp_tags.append(f'lpips-{args.lpips_max}')
+    exp_suffix = ('-' + '-'.join(exp_tags)) if exp_tags else ''
+    args.exp_name = ('%s-%s-%s%s' % (args.dataset, args.model, args.criterion, exp_suffix))
     print(args.exp_name)
     utility.make_path(args.output_dir)
     utility.make_path(args.output_dir + args.exp_name)
