@@ -21,7 +21,6 @@ import image_transforms
 from torchvision.models import resnet50, ResNet50_Weights
 
 from torch.utils.data import Dataset
-import torch
 
 import hashlib
 
@@ -204,9 +203,8 @@ class Fuzzer:
                 I = S[s_i]
                 L = S_label[s_i]
                 root_idx = S_root_idx[s_i]
-                I_orig = self.initial_images[root_idx]
                 for i in range(1, Ps(s_i) + 1):
-                    I_new, op = self.Mutate(I, I_orig)
+                    I_new, op = self.Mutate(I)
                     if self.isFailedTest(I_new):
                         F += np.concatenate((F, [I_new]))
                     elif self.isChanged(I, I_new):
@@ -348,7 +346,7 @@ class Fuzzer:
         B_c, Bs, Bs_label, Bs_root_idx = T
         B_c[B_id] += 1
 
-    def Mutate(self, I, I_orig):
+    def Mutate(self, I):
         G, P, S = self.params.G, self.params.P, self.params.S
         I0, state = self.info[I]
 
@@ -380,11 +378,6 @@ class Fuzzer:
                     self.info[I_mutated] = (I0, state)
                 return I_mutated, (t, p)
         return I, (t, p)
-
-            I_mutated = t(I, p).reshape(*(self.params.input_shape[1:]))
-            I_mutated = np.clip(I_mutated, 0, 255)
-            if self.params.use_rounding:
-                I_mutated = np.round(I_mutated).astype(np.uint8)
 
     def saveImage(self, image, path):
         if image is not None:
