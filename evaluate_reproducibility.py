@@ -79,30 +79,20 @@ def parse_labels_from_path(path: Path):
     if not m:
         raise ValueError(f"Bad filename: {path.name}")
 
-    sample_id = m.group("id")
-    kind = m.group("kind")
     predicted_label = int(m.group("label"))
 
     return gt_label, predicted_label
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", required=True, choices=["CIFAR10", "ImageNet"])
-    parser.add_argument("--model", required=True, choices=["resnet50", "vgg16_bn", "mobilenet_v2"])
-    parser.add_argument("--ae-dir", required=True, help="Directory containing saved AE PNGs, e.g. .../image/aes")
-    parser.add_argument("--output", default=None, help="Optional JSON output path")
-    parser.add_argument("--limit", type=int, default=None, help="Optional max number of AE files to evaluate")
-    args = parser.parse_args()
-
+def calculate_reproducibility(dataset: str, model_name: str, ae_dir, limit=None):
     set_deterministic()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = load_model(args.dataset, args.model, device)
+    model = load_model(dataset, model_name, device)
 
-    ae_dir = Path(args.ae_dir)
+    ae_dir = Path(ae_dir)
     files = sorted(ae_dir.rglob("*.png"))
-    if args.limit is not None:
-        files = files[:args.limit]
+    if limit is not None:
+        files = files[:limit]
 
     stats = {
         "total": 0,
@@ -127,7 +117,7 @@ def main():
             continue
 
         img = np.array(Image.open(path).convert("RGB"), dtype=np.uint8)
-        pred = predict(model, img, args.dataset, device)
+        pred = predict(model, img, dataset, device)
 
         stats["total"] += 1
 
@@ -157,18 +147,86 @@ def main():
         "changed_wrong_label_pct": 100.0 * stats["changed_wrong_label"] / total,
     }
 
+    return summary, details
+
+
+def upsert_output_json(output_json_path, case_key, section_key, payload):
+    output_json_path = Path(output_json_path)
+    if output_json_path.exists():
+        with open(output_json_path, "r") as f:
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                data = {}
+    else:
+        data = {}
+
+    if case_key not in data or not isinstance(data[case_key], dict):
+        data[case_key] = {}
+
+    data[case_key][section_key] = payload
+
+    with open(output_json_path, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def get_existing_section(output_json_path, case_key, section_key):
+    output_json_path = Path(output_json_path)
+    if not output_json_path.exists():
+        return None
+    with open(output_json_path, "r") as f:
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError:
+            return None
+    if not isinstance(data, dict):
+        return None
+    case_entry = data.get(case_key)
+    if not isinstance(case_entry, dict):
+        return None
+    return case_entry.get(section_key)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", required=True, choices=["CIFAR10", "ImageNet"])
+    parser.add_argument("--model", required=True, choices=["resnet50", "vgg16_bn", "mobilenet_v2"])
+    parser.add_argument("--image-root", required=True, help="Root image directory containing 'aes/'")
+    parser.add_argument("--output-json", default=None, help="Optional shared JSON file to update with reproducibility results")
+    parser.add_argument("--case-key", default=None, help="Optional key used in the shared JSON; defaults to the full image root directory path")
+    parser.add_argument("--limit", type=int, default=None, help="Optional max number of AE files to evaluate")
+    parser.add_argument("--details-json", default=None, help="Optional JSON path for per-sample details")
+    parser.add_argument("--override", action="store_true", help="Recompute even if reproducibility already exists in the output JSON")
+    args = parser.parse_args()
+
+    image_root = Path(args.image_root)
+    ae_dir = image_root / "aes"
+    if not ae_dir.is_dir():
+        raise RuntimeError(f"Expected '{ae_dir}' to exist.")
+
+    case_key = args.case_key or str(image_root)
+
+    if args.output_json:
+        existing = get_existing_section(args.output_json, case_key, "reproducibility")
+        if existing is not None and not args.override:
+            print(json.dumps(existing, indent=2))
+            return
+
+    summary, details = calculate_reproducibility(
+        dataset=args.dataset,
+        model_name=args.model,
+        ae_dir=ae_dir,
+        limit=args.limit,
+    )
+
     print(json.dumps(summary, indent=2))
 
-    if args.output:
-        with open(args.output, "w") as f:
-            json.dump(
-                {
-                    "summary": summary,
-                    "details": details,
-                },
-                f,
-                indent=2,
-            )
+    if args.output_json:
+        upsert_output_json(args.output_json, case_key, "reproducibility", summary)
+
+    if args.details_json:
+        with open(args.details_json, "w") as f:
+            json.dump(details, f, indent=2)
 
 
 if __name__ == "__main__":

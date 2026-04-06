@@ -152,6 +152,23 @@ def upsert_output_json(output_json_path, case_key, section_key, payload):
         json.dump(data, f, indent=2)
 
 
+def get_existing_section(output_json_path, case_key, section_key):
+    output_json_path = Path(output_json_path)
+    if not output_json_path.exists():
+        return None
+    with open(output_json_path, "r") as f:
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError:
+            return None
+    if not isinstance(data, dict):
+        return None
+    case_entry = data.get(case_key)
+    if not isinstance(case_entry, dict):
+        return None
+    return case_entry.get(section_key)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-root", required=True, help="Root image directory containing 'orig/' and 'aes/'")
@@ -163,6 +180,7 @@ def main():
     parser.add_argument("--case-key", default=None, help="Optional key used in the shared JSON; defaults to the full image root directory path")
     parser.add_argument("--output-csv", default=None, help="Optional per-sample CSV path")
     parser.add_argument("--high-lpips-csv", default=None, help="Optional CSV path for high-LPIPS samples")
+    parser.add_argument("--override", action="store_true", help="Recompute even if naturalness already exists in the output JSON")
     args = parser.parse_args()
 
     image_root = Path(args.image_root)
@@ -172,6 +190,11 @@ def main():
         raise RuntimeError(f"Expected '{orig_dir}' and '{ae_dir}' to exist.")
 
     case_key = args.case_key or str(image_root)
+
+    existing = get_existing_section(args.output_json, case_key, "naturalness")
+    if existing is not None and not args.override:
+        print(json.dumps(existing, indent=2))
+        return
 
     result, rows, high_lpips_rows = calculate_naturalness(
         orig_root=orig_dir,
