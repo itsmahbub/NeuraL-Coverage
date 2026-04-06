@@ -12,6 +12,7 @@ import torch.nn.functional as F
 import json
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
+from PIL import Image
 
 import coverage
 import utility
@@ -25,10 +26,10 @@ import torch
 import hashlib
 
 def hash_numpy(arr: np.ndarray) -> str:
+    arr = np.clip(np.round(arr), 0, 255).astype(np.uint8)
     h = hashlib.sha256()
     h.update(arr.tobytes())
     h.update(str(arr.shape).encode())
-    h.update(str(arr.dtype).encode())
     return h.hexdigest()
 
 
@@ -199,7 +200,7 @@ class Fuzzer:
                 I = S[s_i]
                 i_hash = hash_numpy(I)
                 if i_hash not in self.orig_map:
-                    self.orig_map[i_hash] = I
+                    print("Warning")
 
                 L = S_label[s_i]
                 for i in range(1, Ps(s_i) + 1):
@@ -229,7 +230,9 @@ class Fuzzer:
                             if i_hash in self.orig_map:
                                 self.orig_map[i_new_hash] = self.orig_map[i_hash]
                             else:
-                                self.orig_map[i_new_hash] = I
+                                print("WARNING: orig_map miss; falling back to current parent")
+                                self.orig_map[i_new_hash] = I.copy()
+
                             break
 
 
@@ -252,29 +255,23 @@ class Fuzzer:
                 if num_wrong > 0:
                     self.num_ae += num_wrong
 
-                # if self.epoch % self.params.save_every == 0:
-                    # self.saveImage(B_new / self.params.input_scale, self.params.image_dir + ('%03d_new.jpg' % self.epoch))
-                    # self.saveImage(B_old / self.params.input_scale, self.params.image_dir + ('%03d_old.jpg' % self.epoch))
                 if num_wrong > 0:
                     # print('Saving AE images...')
                     ae_indices = ae_index.tolist()
-                    new_image = utility.image_normalize_inv(new_image, self.params.dataset)
                     for i, idx in enumerate(ae_indices):
                         ground_truth = new_label[idx].item()
                         mutated_label = mutated_labels[idx].item()
                         id = f"{self.epoch}_{i}"
                         os.makedirs(f"{self.params.image_dir}/aes/{ground_truth}/", exist_ok=True)
                         os.makedirs(f"{self.params.image_dir}/orig/{ground_truth}/", exist_ok=True)
-                   
-                        save_image(new_image[idx].data, f"{self.params.image_dir}/aes/{ground_truth}/{id}_ae_{mutated_label}_{mutated_label}.jpg")
-                        
-                        
-                        old_hash =hash_numpy(B_old[idx])
-                        old_image = self.orig_map[old_hash]
-                        old_image = np.expand_dims(old_image, axis=0)
-                        old_image = self.image_to_input(old_image)
-                        old_image = utility.image_normalize_inv(old_image, self.params.dataset)
-                        save_image(old_image[0].data, f"{self.params.image_dir}/orig/{ground_truth}/{id}_orig_{ground_truth}.png", normalize=True, format='PNG')
+
+                        img = np.clip(np.round(B_new[idx]), 0, 255).astype(np.uint8)
+                        Image.fromarray(img).save(f"{self.params.image_dir}/aes/{ground_truth}/{id}_ae_{mutated_label}_{mutated_label}.png", format="PNG")
+
+                        ae_hash = hash_numpy(B_old[idx])
+                        old_image = self.orig_map[ae_hash]
+                        old_image = np.clip(np.round(old_image), 0, 255).astype(np.uint8)
+                        Image.fromarray(old_image).save(f"{self.params.image_dir}/orig/{ground_truth}/{id}_orig_{ground_truth}.png", format="PNG")
 
             gc.collect()
 
@@ -297,6 +294,12 @@ class Fuzzer:
         np.random.shuffle(randomize_idx)
         image_list = [image_list[idx] * self.params.input_scale for idx in randomize_idx]
         label_list = [label_list[idx] for idx in randomize_idx]
+
+        for img in image_list:
+            h = hash_numpy(img)
+            if h not in self.orig_map:
+                self.orig_map[h] = img.copy()
+
 
         Bs = self.to_batch(image_list)
         Bs_label = self.to_batch(label_list)
@@ -364,14 +367,15 @@ class Fuzzer:
 
             I_mutated = t(I, p).reshape(*(self.params.input_shape[1:]))
             I_mutated = np.clip(I_mutated, 0, 255)
-            I_mutated = np.round(I_mutated).astype(np.uint8)
+            # I_mutated = np.round(I_mutated).astype(np.uint8)
 
-            # if (t, p) in S or self.f(I0, I_mutated):
-            if self.f(I0, I_mutated):
+            if (t, p) in S or self.f(I0, I_mutated):
+            # if self.f(I0, I_mutated):
                 if (t, p) in G:
                     state = 1
                     I0_G = t(I0, p)
                     I0_G = np.clip(I0_G, 0, 255)
+                    # I0_G = np.round(I0_G).astype(np.uint8)
                     self.info[I_mutated] = (I0_G, state)
                 else:
                     self.info[I_mutated] = (I0, state)

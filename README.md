@@ -165,3 +165,4 @@ mkdir -p datasets/imagenet-mini/train
 cp -r ../TransFuzz/seeds/imagenet-mini/val datasets/imagenet-mini/
 python fuzz.py --dataset ImageNet --model resnet50 --criterion NLC --random_seed 0
 ```
+python evaluate_reproducibility.py --dataset ImageNet --model resnet50 --ae-dir data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-1/image/aes --output reproducibility.json

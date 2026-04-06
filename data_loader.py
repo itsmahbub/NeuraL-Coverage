@@ -267,7 +267,8 @@ class FuzzDataset:
         for i in tqdm(range(len(image_list))):
             image = image_list[i]
             if is_image:
-                image_numpy = image.transpose(0, 2).numpy()
+                # image_numpy = image.transpose(0, 2).numpy()
+                image_numpy = image.permute(1, 2, 0).cpu().numpy()
             else:
                 image_numpy = image.numpy()
             image_numpy_list.append(image_numpy)
