@@ -126,7 +126,7 @@ class Fuzzer:
         self.delta_time = 0
         self.delta_batch = 0
         self.num_ae = 0
-        self.orig_map = {}
+        self.initial_images = None
 
     def exit(self):
         self.print_info()
@@ -179,7 +179,7 @@ class Fuzzer:
         del L_input
         gc.collect()
 
-        B, B_label, B_id = self.SelectNext(T)
+        B, B_label, B_root_idx, B_id = self.SelectNext(T)
         self.epoch = 0
         start_time = time.time()
         overall_counts = [0]
@@ -192,15 +192,16 @@ class Fuzzer:
             # S = self.Sample(B)
             S = B
             S_label = B_label
+            S_root_idx = B_root_idx
             Ps = self.PowerSchedule(S, self.hyper_params['K'])
             B_new = np.array([]).reshape(0, *(self.params.input_shape[1:])).astype('float32')
             B_old = np.array([]).reshape(0, *(self.params.input_shape[1:])).astype('float32')
             B_label_new = []
+            B_root_idx_new = []
             for s_i in range(len(S)):
                 I = S[s_i]
-                i_hash = hash_numpy(I)
-            
                 L = S_label[s_i]
+                root_idx = S_root_idx[s_i]
                 for i in range(1, Ps(s_i) + 1):
                     I_new, op = self.Mutate(I)
                     if self.isFailedTest(I_new):
@@ -223,24 +224,25 @@ class Fuzzer:
                             B_new = np.concatenate((B_new, [I_new]))
                             B_old = np.concatenate((B_old, [I]))
                             B_label_new += [L]
-                            i_new_hash = hash_numpy(I_new)
-                            self.orig_map[i_new_hash] = self.orig_map[i_hash]
+                            B_root_idx_new += [root_idx]
 
                             break
 
 
             if len(B_new) > 0:
                 B_label_new = np.array(B_label_new)
+                B_root_idx_new = np.array(B_root_idx_new)
                 new_image = self.image_to_input(B_new)
                 new_image = new_image.to(self.params.device)
                 new_label = torch.from_numpy(B_label_new)
                 new_label = new_label.to(self.params.device)
 
            
-                B_c, Bs, Bs_label = T
+                B_c, Bs, Bs_label, Bs_root_idx = T
                 B_c += [0]
                 Bs += [B_new]
                 Bs_label += [B_label_new]
+                Bs_root_idx += [B_root_idx_new]
                 self.delta_batch += 1
                 self.BatchPrioritize(T, B_id)
 
@@ -261,14 +263,13 @@ class Fuzzer:
                         img = np.clip(np.round(B_new[idx]), 0, 255).astype(np.uint8)
                         Image.fromarray(img).save(f"{self.params.image_dir}/aes/{ground_truth}/{id}_ae_{mutated_label}_{mutated_label}.png", format="PNG")
 
-                        old_hash = hash_numpy(B_old[idx])
-                        old_image = self.orig_map[old_hash]
+                        old_image = self.initial_images[B_root_idx_new[idx]]
                         old_image = np.clip(np.round(old_image), 0, 255).astype(np.uint8)
                         Image.fromarray(old_image).save(f"{self.params.image_dir}/orig/{ground_truth}/{id}_orig_{ground_truth}.png", format="PNG")
 
             gc.collect()
 
-            B, B_label, B_id = self.SelectNext(T)
+            B, B_label, B_root_idx, B_id = self.SelectNext(T)
             self.epoch += 1
             self.delta_time = time.time() - start_time
             delta_times.append(self.delta_time)
@@ -287,17 +288,13 @@ class Fuzzer:
         np.random.shuffle(randomize_idx)
         image_list = [image_list[idx] * self.params.input_scale for idx in randomize_idx]
         label_list = [label_list[idx] for idx in randomize_idx]
-
-        for img in image_list:
-            h = hash_numpy(img)
-            if h not in self.orig_map:
-                self.orig_map[h] = img.copy()
-
+        self.initial_images = image_list
 
         Bs = self.to_batch(image_list)
         Bs_label = self.to_batch(label_list)
+        Bs_root_idx = self.to_batch(list(range(len(image_list))))
 
-        return list(np.zeros(len(Bs))), Bs, Bs_label
+        return list(np.zeros(len(Bs))), Bs, Bs_label, Bs_root_idx
 
     def calc_priority(self, B_ci):
         if B_ci < (1 - self.hyper_params['p_min']) * self.hyper_params['gamma']:
@@ -306,10 +303,10 @@ class Fuzzer:
             return self.hyper_params['p_min']
 
     def SelectNext(self, T):
-        B_c, Bs, Bs_label = T
+        B_c, Bs, Bs_label, Bs_root_idx = T
         B_p = [self.calc_priority(B_c[i]) for i in range(len(B_c))]
         c = np.random.choice(len(Bs), p=B_p / np.sum(B_p))
-        return Bs[c], Bs_label[c], c
+        return Bs[c], Bs_label[c], Bs_root_idx[c], c
 
     def Sample(self, B):
         c = np.random.choice(len(B), size=self.params.mutate_batch_size, replace=False)
@@ -345,7 +342,7 @@ class Fuzzer:
             return False
 
     def BatchPrioritize(self, T, B_id):
-        B_c, Bs, Bs_label = T
+        B_c, Bs, Bs_label, Bs_root_idx = T
         B_c[B_id] += 1
 
     def Mutate(self, I):
