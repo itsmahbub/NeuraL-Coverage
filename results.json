@@ -1,101 +1,134 @@
 {
-  "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-rounding-enforce-plausibility/image": {
+  "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC/image": {
     "naturalness": {
-      "count": 475,
-      "mean_lpips": 0.352164,
-      "mean_ssim": 0.621587,
-      "median_lpips": 0.346076,
-      "median_ssim": 0.639793,
-      "min_lpips": 0.014659,
-      "max_lpips": 0.965137,
-      "min_ssim": 0.097672,
-      "max_ssim": 0.976758
+      "count": 1508,
+      "mean_lpips": 0.44366,
+      "mean_ssim": 0.429004,
+      "median_lpips": 0.445585,
+      "median_ssim": 0.367379,
+      "min_lpips": 0.027571,
+      "max_lpips": 0.991989,
+      "min_ssim": 0.031789,
+      "max_ssim": 0.980482
     },
     "reproducibility": {
-      "total": 475,
-      "reproducible": 473,
-      "reverted_to_gt": 0,
-      "changed_wrong_label": 2,
+      "total": 1508,
+      "reproducible": 1437,
+      "reverted_to_gt": 13,
+      "changed_wrong_label": 58,
       "parse_error": 0,
-      "reproducible_pct": 99.57894736842105,
-      "reverted_to_gt_pct": 0.0,
-      "changed_wrong_label_pct": 0.42105263157894735
+      "reproducible_pct": 95.29177718832891,
+      "reverted_to_gt_pct": 0.8620689655172413,
+      "changed_wrong_label_pct": 3.8461538461538463
     },
     "clip_drift": {
-      "count": 475,
-      "mean_clip_similarity": 0.849268,
-      "median_clip_similarity": 0.875671,
-      "min_clip_similarity": 0.480375,
-      "max_clip_similarity": 0.994658,
+      "count": 1508,
+      "mean_clip_similarity": 0.739555,
+      "median_clip_similarity": 0.72968,
+      "min_clip_similarity": 0.363909,
+      "max_clip_similarity": 0.996391,
       "clip_drift_threshold": 0.8,
-      "drifted_count": 113,
-      "drifted_pct": 23.789473684210527
+      "drifted_count": 1009,
+      "drifted_pct": 66.90981432360742
     }
   },
   "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-rounding/image": {
     "naturalness": {
-      "count": 649,
-      "mean_lpips": 0.391589,
-      "mean_ssim": 0.485499,
-      "median_lpips": 0.386492,
-      "median_ssim": 0.426372,
-      "min_lpips": 0.013089,
-      "max_lpips": 0.943561,
+      "count": 1442,
+      "mean_lpips": 0.437794,
+      "mean_ssim": 0.457237,
+      "median_lpips": 0.424187,
+      "median_ssim": 0.397124,
+      "min_lpips": 0.011164,
+      "max_lpips": 0.974641,
       "min_ssim": 0.044346,
       "max_ssim": 0.987115
     },
     "reproducibility": {
-      "total": 649,
-      "reproducible": 647,
+      "total": 1442,
+      "reproducible": 1438,
       "reverted_to_gt": 0,
-      "changed_wrong_label": 2,
+      "changed_wrong_label": 4,
       "parse_error": 0,
-      "reproducible_pct": 99.69183359013867,
+      "reproducible_pct": 99.72260748959778,
       "reverted_to_gt_pct": 0.0,
-      "changed_wrong_label_pct": 0.3081664098613251
+      "changed_wrong_label_pct": 0.27739251040221913
     },
     "clip_drift": {
-      "count": 649,
-      "mean_clip_similarity": 0.785181,
-      "median_clip_similarity": 0.78798,
-      "min_clip_similarity": 0.470722,
+      "count": 1442,
+      "mean_clip_similarity": 0.766046,
+      "median_clip_similarity": 0.767398,
+      "min_clip_similarity": 0.34328,
       "max_clip_similarity": 0.995253,
       "clip_drift_threshold": 0.8,
-      "drifted_count": 351,
-      "drifted_pct": 54.08320493066256
+      "drifted_count": 858,
+      "drifted_pct": 59.500693481276
     }
   },
-  "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC/image": {
+  "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-rounding-enforce-plausibility/image": {
     "naturalness": {
-      "count": 668,
-      "mean_lpips": 0.3875,
-      "mean_ssim": 0.468887,
-      "median_lpips": 0.39073,
-      "median_ssim": 0.398078,
-      "min_lpips": 0.027571,
-      "max_lpips": 0.922077,
-      "min_ssim": 0.03588,
-      "max_ssim": 0.980482
+      "count": 1178,
+      "mean_lpips": 0.421807,
+      "mean_ssim": 0.554651,
+      "median_lpips": 0.409735,
+      "median_ssim": 0.557314,
+      "min_lpips": 0.014659,
+      "max_lpips": 1.089722,
+      "min_ssim": 0.022744,
+      "max_ssim": 0.976758
     },
     "reproducibility": {
-      "total": 668,
-      "reproducible": 638,
-      "reverted_to_gt": 8,
-      "changed_wrong_label": 22,
+      "total": 1178,
+      "reproducible": 1175,
+      "reverted_to_gt": 0,
+      "changed_wrong_label": 3,
       "parse_error": 0,
-      "reproducible_pct": 95.50898203592814,
-      "reverted_to_gt_pct": 1.1976047904191616,
-      "changed_wrong_label_pct": 3.2934131736526946
+      "reproducible_pct": 99.7453310696095,
+      "reverted_to_gt_pct": 0.0,
+      "changed_wrong_label_pct": 0.2546689303904924
     },
     "clip_drift": {
-      "count": 668,
-      "mean_clip_similarity": 0.769815,
-      "median_clip_similarity": 0.769553,
-      "min_clip_similarity": 0.363909,
-      "max_clip_similarity": 0.996391,
+      "count": 1178,
+      "mean_clip_similarity": 0.811275,
+      "median_clip_similarity": 0.836477,
+      "min_clip_similarity": 0.445894,
+      "max_clip_similarity": 0.994658,
       "clip_drift_threshold": 0.8,
-      "drifted_count": 381,
-      "drifted_pct": 57.035928143712574
+      "drifted_count": 450,
+      "drifted_pct": 38.20033955857385
+    }
+  },
+  "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-enforce-plausibility/image": {
+    "naturalness": {
+      "count": 952,
+      "mean_lpips": 0.397972,
+      "mean_ssim": 0.593485,
+      "median_lpips": 0.395666,
+      "median_ssim": 0.615704,
+      "min_lpips": 0.013459,
+      "max_lpips": 1.003385,
+      "min_ssim": 0.06852,
+      "max_ssim": 0.986187
+    },
+    "reproducibility": {
+      "total": 952,
+      "reproducible": 899,
+      "reverted_to_gt": 30,
+      "changed_wrong_label": 23,
+      "parse_error": 0,
+      "reproducible_pct": 94.4327731092437,
+      "reverted_to_gt_pct": 3.1512605042016806,
+      "changed_wrong_label_pct": 2.4159663865546217
+    },
+    "clip_drift": {
+      "count": 952,
+      "mean_clip_similarity": 0.819597,
+      "median_clip_similarity": 0.840632,
+      "min_clip_similarity": 0.399972,
+      "max_clip_similarity": 0.99621,
+      "clip_drift_threshold": 0.8,
+      "drifted_count": 355,
+      "drifted_pct": 37.28991596638655
     }
   }
 }
