@@ -167,7 +167,7 @@ class Fuzzer:
 
     def image_to_input(self, image):
         scaled_image = image / self.params.input_scale
-        tensor_image = torch.from_numpy(scaled_image).transpose(1, 3)
+        tensor_image = torch.from_numpy(scaled_image).permute(0, 3, 1, 2)
         normalized_image = utility.image_normalize(tensor_image, self.params.dataset)
         return normalized_image
 
@@ -375,7 +375,7 @@ class Fuzzer:
     def saveImage(self, image, path):
         if image is not None:
             print('Saving mutated images in %s...' % path)
-            image_tensor = torch.from_numpy(image).transpose(1, 3)
+            image_tensor = torch.from_numpy(image).permute(0, 3, 1, 2)
             save_image(image_tensor.data, path, normalize=True)
 
     def randomPick(self, A):

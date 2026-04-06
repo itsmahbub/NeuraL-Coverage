@@ -57,7 +57,7 @@ def image_to_input(image_hwc_uint8: np.ndarray, dataset: str, device: torch.devi
     assert image_hwc_uint8.dtype == np.uint8
     x = image_hwc_uint8.astype(np.float32) / 255.0
     x = np.expand_dims(x, axis=0)  # 1 x H x W x C
-    x = torch.from_numpy(x).transpose(1, 3)  # 1 x C x H x W
+    x = torch.from_numpy(x).permute(0, 3, 1, 2)  # 1 x C x H x W
     x = utility.image_normalize(x, dataset)
     return x.to(device)
 
