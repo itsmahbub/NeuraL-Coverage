@@ -283,7 +283,7 @@ class Fuzzer:
             self.epoch += 1
             self.delta_time = time.time() - start_time
             delta_times.append(self.delta_time)
-            overall_counts.append(self.num_ae.item())
+            overall_counts.append(self.num_ae.item() if isinstance(self.num_ae, torch.Tensor) else self.num_ae)
             coverage_gains.append(self.criterion.current.item() if isinstance(self.criterion.current, torch.Tensor) else self.criterion.current)
 
         with open(f"{self.params.image_dir}/statistics.json", "w") as f:

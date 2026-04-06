@@ -1,0 +1,15 @@
+{
+  "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC/image": {
+    "naturalness": {
+      "count": 1100,
+      "mean_lpips": 0.416204,
+      "mean_ssim": 0.557796,
+      "median_lpips": 0.403909,
+      "median_ssim": 0.56038,
+      "min_lpips": 0.014659,
+      "max_lpips": 1.089722,
+      "min_ssim": 0.022744,
+      "max_ssim": 0.976758
+    }
+  }
+}
