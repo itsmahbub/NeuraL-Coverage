@@ -89,6 +89,8 @@ def calculate_clip_drift(orig_root, aes_root, threshold=None, resize_to=None, mo
             row = {
                 "class": cls,
                 "id": file_id,
+                "orig_name": orig_path.name,
+                "ae_name": ae_path.name,
                 "orig_path": str(orig_path),
                 "ae_path": str(ae_path),
                 "clip_similarity": similarity,
