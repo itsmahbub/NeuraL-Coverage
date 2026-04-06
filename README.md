@@ -165,10 +165,27 @@ mkdir -p datasets/imagenet-mini/train
 cp -r ../TransFuzz/seeds/imagenet-mini/val datasets/imagenet-mini/
 python fuzz.py --dataset ImageNet --model resnet50 --criterion NLC --random_seed 0
 ```
-python evaluate_reproducibility.py --dataset ImageNet --model resnet50 --ae-dir data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-1/image/aes --output reproducibility.json
+python evaluate_reproducibility.py --dataset ImageNet --model resnet50 --ae-dir data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-rounding-enforce-plausibility --output reproducibility.json
+
+python evaluate_reproducibility.py \
+  --dataset ImageNet \
+  --model resnet50 \
+  --image-root data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-rounding-enforce-plausibility/image \
+  --output-json results.json
 
 
 python calculate_naturalness.py \
   --image-root data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC/image \
   --output-json results.json \
   --resize-to 224
+
+python fuzz.py --dataset ImageNet --model resnet50 --criterion NLC --random_seed 0
+python fuzz.py --dataset ImageNet --model resnet50 --criterion NLC --random_seed 0 --use_rounding
+python fuzz.py --dataset ImageNet --model resnet50 --criterion NLC --random_seed 0 --enforce_plausibility
+python fuzz.py --dataset ImageNet --model resnet50 --criterion NLC --random_seed 0 --use_rounding --enforce_plausibility
+
+
+python /Users/mahbub/research/FuzzCheck.AI/NeuraL-Coverage/calculate_clip_drift.py \
+  --image-root /Users/mahbub/research/FuzzCheck.AI/NeuraL-Coverage/data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC/image \
+  --output-json /Users/mahbub/research/FuzzCheck.AI/NeuraL-Coverage/results.json \
+  --threshold 0.85

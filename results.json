@@ -1,15 +1,101 @@
 {
+  "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-rounding-enforce-plausibility/image": {
+    "naturalness": {
+      "count": 475,
+      "mean_lpips": 0.352164,
+      "mean_ssim": 0.621587,
+      "median_lpips": 0.346076,
+      "median_ssim": 0.639793,
+      "min_lpips": 0.014659,
+      "max_lpips": 0.965137,
+      "min_ssim": 0.097672,
+      "max_ssim": 0.976758
+    },
+    "reproducibility": {
+      "total": 475,
+      "reproducible": 473,
+      "reverted_to_gt": 0,
+      "changed_wrong_label": 2,
+      "parse_error": 0,
+      "reproducible_pct": 99.57894736842105,
+      "reverted_to_gt_pct": 0.0,
+      "changed_wrong_label_pct": 0.42105263157894735
+    },
+    "clip_drift": {
+      "count": 475,
+      "mean_clip_similarity": 0.849268,
+      "median_clip_similarity": 0.875671,
+      "min_clip_similarity": 0.480375,
+      "max_clip_similarity": 0.994658,
+      "clip_drift_threshold": 0.8,
+      "drifted_count": 113,
+      "drifted_pct": 23.789473684210527
+    }
+  },
+  "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-rounding/image": {
+    "naturalness": {
+      "count": 649,
+      "mean_lpips": 0.391589,
+      "mean_ssim": 0.485499,
+      "median_lpips": 0.386492,
+      "median_ssim": 0.426372,
+      "min_lpips": 0.013089,
+      "max_lpips": 0.943561,
+      "min_ssim": 0.044346,
+      "max_ssim": 0.987115
+    },
+    "reproducibility": {
+      "total": 649,
+      "reproducible": 647,
+      "reverted_to_gt": 0,
+      "changed_wrong_label": 2,
+      "parse_error": 0,
+      "reproducible_pct": 99.69183359013867,
+      "reverted_to_gt_pct": 0.0,
+      "changed_wrong_label_pct": 0.3081664098613251
+    },
+    "clip_drift": {
+      "count": 649,
+      "mean_clip_similarity": 0.785181,
+      "median_clip_similarity": 0.78798,
+      "min_clip_similarity": 0.470722,
+      "max_clip_similarity": 0.995253,
+      "clip_drift_threshold": 0.8,
+      "drifted_count": 351,
+      "drifted_pct": 54.08320493066256
+    }
+  },
   "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC/image": {
     "naturalness": {
-      "count": 1100,
-      "mean_lpips": 0.416204,
-      "mean_ssim": 0.557796,
-      "median_lpips": 0.403909,
-      "median_ssim": 0.56038,
-      "min_lpips": 0.014659,
-      "max_lpips": 1.089722,
-      "min_ssim": 0.022744,
-      "max_ssim": 0.976758
+      "count": 668,
+      "mean_lpips": 0.3875,
+      "mean_ssim": 0.468887,
+      "median_lpips": 0.39073,
+      "median_ssim": 0.398078,
+      "min_lpips": 0.027571,
+      "max_lpips": 0.922077,
+      "min_ssim": 0.03588,
+      "max_ssim": 0.980482
+    },
+    "reproducibility": {
+      "total": 668,
+      "reproducible": 638,
+      "reverted_to_gt": 8,
+      "changed_wrong_label": 22,
+      "parse_error": 0,
+      "reproducible_pct": 95.50898203592814,
+      "reverted_to_gt_pct": 1.1976047904191616,
+      "changed_wrong_label_pct": 3.2934131736526946
+    },
+    "clip_drift": {
+      "count": 668,
+      "mean_clip_similarity": 0.769815,
+      "median_clip_similarity": 0.769553,
+      "min_clip_similarity": 0.363909,
+      "max_clip_similarity": 0.996391,
+      "clip_drift_threshold": 0.8,
+      "drifted_count": 381,
+      "drifted_pct": 57.035928143712574
     }
   }
 }

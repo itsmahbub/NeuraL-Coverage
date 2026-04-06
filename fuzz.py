@@ -139,7 +139,7 @@ class Fuzzer:
         #     self.epoch > 10000000000,
         #     self.delta_time > 15 * 60,
         # ]) 
-        return self.delta_time > 5 * 60
+        return self.delta_time > 10 * 60
 
     def print_info(self):
         self.logger.update(self)
