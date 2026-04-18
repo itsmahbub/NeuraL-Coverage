@@ -1,37 +1,5 @@
 {
-  "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC/image": {
-    "naturalness": {
-      "count": 1508,
-      "mean_lpips": 0.44366,
-      "mean_ssim": 0.429004,
-      "median_lpips": 0.445585,
-      "median_ssim": 0.367379,
-      "min_lpips": 0.027571,
-      "max_lpips": 0.991989,
-      "min_ssim": 0.031789,
-      "max_ssim": 0.980482
-    },
-    "reproducibility": {
-      "total": 1508,
-      "reproducible": 1437,
-      "reverted_to_gt": 13,
-      "changed_wrong_label": 58,
-      "parse_error": 0,
-      "reproducible_pct": 95.29177718832891,
-      "reverted_to_gt_pct": 0.8620689655172413,
-      "changed_wrong_label_pct": 3.8461538461538463
-    },
-    "clip_drift": {
-      "count": 1508,
-      "mean_clip_similarity": 0.739555,
-      "median_clip_similarity": 0.72968,
-      "min_clip_similarity": 0.363909,
-      "max_clip_similarity": 0.996391,
-      "clip_drift_threshold": 0.8,
-      "drifted_count": 1009,
-      "drifted_pct": 66.90981432360742
-    }
-  },
+  
   "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC-rounding/image": {
     "naturalness": {
       "count": 1442,
@@ -129,6 +97,39 @@
       "clip_drift_threshold": 0.8,
       "drifted_count": 355,
       "drifted_pct": 37.28991596638655
+    }
+  },
+  "data/output/Coverage/Fuzzer/ImageNet-resnet50-NLC/image": {
+    "naturalness": {
+      "count": 1594,
+      "mean_lpips": 0.448378,
+      "mean_ssim": 0.42982,
+      "median_lpips": 0.449574,
+      "median_ssim": 0.373159,
+      "min_lpips": 0.026344,
+      "max_lpips": 1.007961,
+      "min_ssim": 0.034841,
+      "max_ssim": 0.986272
+    },
+    "reproducibility": {
+      "total": 1594,
+      "reproducible": 1099,
+      "reverted_to_gt": 77,
+      "changed_wrong_label": 418,
+      "parse_error": 0,
+      "reproducible_pct": 68.94604767879548,
+      "reverted_to_gt_pct": 4.830614805520702,
+      "changed_wrong_label_pct": 26.223337515683813
+    },
+    "clip_drift": {
+      "count": 1594,
+      "mean_clip_similarity": 0.733231,
+      "median_clip_similarity": 0.724089,
+      "min_clip_similarity": 0.371472,
+      "max_clip_similarity": 0.991031,
+      "clip_drift_threshold": 0.8,
+      "drifted_count": 1109,
+      "drifted_pct": 69.57340025094103
     }
   }
 }

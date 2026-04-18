@@ -21,13 +21,13 @@ run_variant() {
   echo
   echo "=== Running variant: ${name} ==="
 
-  "${PYTHON_BIN}" "${SCRIPT_DIR}/fuzz.py" \
-    --dataset "${DATASET}" \
-    --model "${MODEL}" \
-    --criterion "${CRITERION}" \
-    --output_dir "${OUTPUT_DIR}" \
-    --random_seed 0 \
-    "$@"
+  # "${PYTHON_BIN}" "${SCRIPT_DIR}/fuzz.py" \
+  #   --dataset "${DATASET}" \
+  #   --model "${MODEL}" \
+  #   --criterion "${CRITERION}" \
+  #   --output_dir "${OUTPUT_DIR}" \
+  #   --random_seed 0 \
+  #   "$@"
 
   local exp_name="${DATASET}-${MODEL}-${CRITERION}"
   if [[ "${name}" == "rounding" ]]; then
@@ -70,9 +70,9 @@ run_variant() {
 }
 
 run_variant "baseline"
-run_variant "rounding" --use_rounding
-run_variant "enforce-plausibility" --enforce_plausibility
-run_variant "rounding-enforce-plausibility" --use_rounding --enforce_plausibility
+# run_variant "rounding" --use_rounding
+# run_variant "enforce-plausibility" --enforce_plausibility
+# run_variant "rounding-enforce-plausibility" --use_rounding --enforce_plausibility
 
 echo
 echo "All experiments complete."
