@@ -261,8 +261,11 @@ class Fuzzer:
                         os.makedirs(f"{self.params.image_dir}/aes/{ground_truth}/", exist_ok=True)
                         os.makedirs(f"{self.params.image_dir}/orig/{ground_truth}/", exist_ok=True)
 
-                        img = np.clip(np.round(B_new[idx]), 0, 255).astype(np.uint8)
-                        Image.fromarray(img).save(f"{self.params.image_dir}/aes/{ground_truth}/{id}_ae_{mutated_label}_{mutated_label}.png", format="PNG")
+                        if self.params.use_rounding or self.params.enforce_plausibility: # updated 
+                            img = np.clip(np.round(B_new[idx]), 0, 255).astype(np.uint8)
+                            Image.fromarray(img).save(f"{self.params.image_dir}/aes/{ground_truth}/{id}_ae_{mutated_label}_{mutated_label}.png", format="PNG")
+                        else: # old
+                            save_image(new_image[ae_index].data, f"{self.params.image_dir}/aes/{ground_truth}/{id}_ae_{mutated_label}_{mutated_label}.png", normalize=True)
 
                         old_image = self.initial_images[B_root_idx_new[idx]]
                         old_image = np.clip(np.round(old_image), 0, 255).astype(np.uint8)

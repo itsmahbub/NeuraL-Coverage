@@ -4,9 +4,9 @@ import argparse
 
 VARIANT_SUFFIXES = [
     ("", "NLC"),
-    ("-rounding", "NLC + Rounding"),
-    ("-enforce-plausibility", "NLC + Plausibility Enforcement"),
-    ("-rounding-enforce-plausibility", "NLC + Both"),
+    ("-rounding", "NLC+FR"),
+    ("-enforce-plausibility", "NLC+IP"),
+    ("-rounding-enforce-plausibility", "NLC+FR+IP"),
 ]
 
 
